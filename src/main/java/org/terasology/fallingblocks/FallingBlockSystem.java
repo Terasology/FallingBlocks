@@ -59,10 +59,10 @@ public class FallingBlockSystem extends BaseComponentSystem{
         for(int oct1 = 0; oct1<8; oct1++) {
             logger.info("bitCount("+oct1+") = "+Integer.bitCount(oct1));
             for(int side : directions) {
-                logger.info("isOctantOnSide("+oct1+","+side+") = "+Node.isOctantOnSide(oct1, side));
+                logger.info("isOctantOnSide("+oct1+","+side+") = "+TreeUtils.isOctantOnSide(oct1, side));
             }
             for(int oct2 = 0; oct2 < 8; oct2++) {
-                logger.info("adjacent("+oct1+","+oct2+") = "+Node.isAdjacent(oct1, oct2));
+                logger.info("adjacent("+oct1+","+oct2+") = "+TreeUtils.isAdjacent(oct1, oct2));
             }
         }*/
     }
@@ -77,16 +77,16 @@ public class FallingBlockSystem extends BaseComponentSystem{
      */
     @ReceiveEvent
     public void blockUpdate(OnChangedBlock event, EntityRef blockEntity) {
-        boolean oldSolid = Node.isSolid(event.getOldType());
-        boolean newSolid = Node.isSolid(event.getNewType());
+        boolean oldSolid = TreeUtils.isSolid(event.getOldType());
+        boolean newSolid = TreeUtils.isSolid(event.getNewType());
         if(oldSolid != newSolid) {
             Vector3i pos = event.getBlockPosition();
-        Vector3i relativePos = Node.modVector(pos, ROOT_NODE_SIZE);
+        Vector3i relativePos = TreeUtils.modVector(pos, ROOT_NODE_SIZE);
         Vector3i chunkPos = new Vector3i(pos).sub(relativePos);
             Node rootNode = rootNodes.get(chunkPos);
             Collection<Component> updatedComponents;
             if(rootNode == null) { //necessarily newSolid == true.
-                rootNode = Node.buildSingletonNode(ROOT_NODE_SIZE, relativePos);
+                rootNode = TreeUtils.buildSingletonNode(ROOT_NODE_SIZE, relativePos);
                 updatedComponents = rootNode.getComponents();
             } else if(newSolid) {
                 updatedComponents = new HashSet();
@@ -111,7 +111,7 @@ public class FallingBlockSystem extends BaseComponentSystem{
         Vector3i pos = event.getChunkPos();
         pos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
-            Node node = Node.buildNode(worldProvider, ROOT_NODE_SIZE, pos.x, pos.y + y, pos.z);
+            Node node = TreeUtils.buildNode(worldProvider, ROOT_NODE_SIZE, pos.x, pos.y + y, pos.z);
             if(node != null) {
                 Vector3i nodePos = new Vector3i(pos).addY(y);
                 logger.info("Creating new root node at "+nodePos);
@@ -146,17 +146,17 @@ public class FallingBlockSystem extends BaseComponentSystem{
         }
         Vector3i pos = cameraTarget.getTargetBlockPosition();
         String result = "Indicated block: "+pos.x+", "+pos.y+", "+pos.z+"\n";
-        Vector3i relativePos = Node.modVector(pos, ROOT_NODE_SIZE);
+        Vector3i relativePos = TreeUtils.modVector(pos, ROOT_NODE_SIZE);
         Vector3i chunkPos = new Vector3i(pos).sub(relativePos);
         Node node = rootNodes.get(chunkPos);
         while(node instanceof InternalNode) {
             InternalNode iNode = (InternalNode) node;
-            int octant = Node.octantOfPosition(iNode.size, relativePos);
+            int octant = TreeUtils.octantOfPosition(iNode.size, relativePos);
             result += "Level "+iNode.size+", octant "+octant+", relative pos "+relativePos.toString()+"\n";
             if(iNode.size <= level) {
                 result += node.getComponents().toString()+"\n";
             }
-            relativePos = Node.modVector(relativePos, iNode.size/2);
+            relativePos = TreeUtils.modVector(relativePos, iNode.size/2);
             node = iNode.children[octant];
         }
         return result;

@@ -61,7 +61,7 @@ public class Component {
     public boolean isTouching(Component sibling, int direction) {
         for(Pair<Integer, Component> subcomponent1 : subcomponents) {
             for(Pair<Integer, Component> subcomponent2 : sibling.subcomponents) {
-                int adjacency = Node.isAdjacent(subcomponent1.a, subcomponent2.a, direction);
+                int adjacency = TreeUtils.isAdjacent(subcomponent1.a, subcomponent2.a, direction);
                 if(adjacency == 0) {
                     continue;
                 }
@@ -96,7 +96,7 @@ public class Component {
                 Iterator<Pair<Integer, Component>> others = unprocessedSubcomponents.iterator();
                 while(others.hasNext()) {
                     Pair<Integer, Component> other = others.next();
-                    int direction = Node.isAdjacent(current.a, other.a);
+                    int direction = TreeUtils.isAdjacent(current.a, other.a);
                     if(direction != 0 && (current.b == null || current.b.isTouching(other.b, direction))) {
                         edge.push(other);
                         others.remove();
@@ -137,7 +137,7 @@ public class Component {
     
     public boolean isTouching(int side) {
         for(Pair<Integer, Component> subcomponent : subcomponents) {
-            if(Node.isOctantOnSide(subcomponent.a, side) && (subcomponent.b == null || subcomponent.b.isTouching(side))) {
+            if(TreeUtils.isOctantOnSide(subcomponent.a, side) && (subcomponent.b == null || subcomponent.b.isTouching(side))) {
                 return true;
             }
         }
@@ -158,9 +158,9 @@ public class Component {
         for(Pair<Integer, Component> subcomponent : subcomponents) {
             Vector3i subPosition = new Vector3i(pos);
             int octant = subcomponent.a;
-            subPosition.add(Node.isOctantOnSide(octant, 4) ? size/2 : 0,
-                            Node.isOctantOnSide(octant, 2) ? size/2 : 0,
-                            Node.isOctantOnSide(octant, 1) ? size/2 : 0);
+            subPosition.add(TreeUtils.isOctantOnSide(octant, 4) ? size/2 : 0,
+                            TreeUtils.isOctantOnSide(octant, 2) ? size/2 : 0,
+                            TreeUtils.isOctantOnSide(octant, 1) ? size/2 : 0);
             if(subcomponent.b == null) {
                 result.add(subPosition);
             } else {

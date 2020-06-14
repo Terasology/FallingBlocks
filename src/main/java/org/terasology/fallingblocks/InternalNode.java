@@ -65,8 +65,8 @@ public class InternalNode extends Node {
     
     @Override
     public Pair<Node, Pair<Set<Component>, Component>> removeBlock(Vector3i pos) {
-        int octant = octantOfPosition(size, pos);
-        Vector3i subPosition = Node.modVector(pos, size/2);
+        int octant = TreeUtils.octantOfPosition(size, pos);
+        Vector3i subPosition = TreeUtils.modVector(pos, size/2);
         Component shrinkingComponent = null; //Set to null initially just to avoid the uninitialized error, but it should always be set to something later.
         // If the children are leaves, they don't actually have references to Components, so a more brute-force method is necessary to find which of the components of this node contains the removed block.
         if(size == 2) {
@@ -98,13 +98,13 @@ public class InternalNode extends Node {
     
     @Override
     public Pair<Component, Set<Integer>> addBlock(Vector3i pos) {
-        int octant = octantOfPosition(size, pos);
-        Vector3i subPosition = Node.modVector(pos, size/2);
+        int octant = TreeUtils.octantOfPosition(size, pos);
+        Vector3i subPosition = TreeUtils.modVector(pos, size/2);
         Component newComponent = null;
         Component parentComponent = null; // If newComponent != null, parentComponent == newComponent.parent. Set to null initially just to avoid the uninitialized error, but it should always be set to something later.
         Set<Integer> exposure;
         if(children[octant] == null) {
-            children[octant] = Node.buildSingletonNode(size/2, subPosition);
+            children[octant] = TreeUtils.buildSingletonNode(size/2, subPosition);
             newComponent = children[octant].getComponents().get(0);
             exposure = new HashSet<>();
             if(subPosition.x == 0) exposure.add(-4);
@@ -138,7 +138,7 @@ public class InternalNode extends Node {
                     merged = true;
                 }
             }
-            exposure.removeIf((Integer side) -> !Node.isOctantOnSide(octant, side));
+            exposure.removeIf((Integer side) -> !TreeUtils.isOctantOnSide(octant, side));
         }
         if(!merged) {
             components.add(parentComponent);
