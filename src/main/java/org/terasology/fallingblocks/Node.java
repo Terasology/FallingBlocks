@@ -14,15 +14,29 @@ import org.terasology.math.geom.Vector3i;
  * In order to avoid having a separate node for every single block, each node doesn't know its own location.
  */
 public abstract class Node {
+    public int size;
     
     public abstract List<Component> getComponents();
     
-    public abstract Stream<Set<Vector3i>> getInternalPositions(Vector3i pos);
+    /**
+     * Returns an octant if there's only one loaded child node, -1 if there are none, and -2 if there are multiple.
+     */
+    public abstract Pair<Integer, Node> canShrink();
     
-    public abstract Pair<Node, Pair<Set<Component>, Component>> removeBlock(Vector3i pos);
+    public abstract Pair<Node, Set<Component>> removeBlock(Vector3i pos);
     
     /**
      * Returns the component the new block ended up in, and which surfaces the new block is exposed to.
      */
     public abstract Pair<Component, Set<Integer>> addBlock(Vector3i pos);
+    
+    /**
+     * Replace an UnloadedNode with something else.
+     */
+    public abstract Set<Component> insertNewChunk(Node newNode, Vector3i pos);
+    
+    /**
+     * Replace something else with an UnloadedNode.
+     */
+    public abstract Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize);
 }

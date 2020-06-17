@@ -27,8 +27,6 @@ public class InternalNode extends Node {
     // The connected components of the solid blocks in this region
     private ArrayList<Component> components;
     
-    public int size;
-    
     public InternalNode(int size, Node[] children) {
         this.size = size;
         this.children = children;
@@ -59,46 +57,34 @@ public class InternalNode extends Node {
     }
     
     @Override
-    public Stream<Set<Vector3i>> getInternalPositions(Vector3i pos){
-        return components.stream().filter((Component c) -> !c.isTouchingAnySide()).map((Component c) -> c.getPositions(pos, size));
-    }
-    
-    @Override
-    public Pair<Node, Pair<Set<Component>, Component>> removeBlock(Vector3i pos) {
-        int octant = TreeUtils.octantOfPosition(size, pos);
+    public Pair<Node, Set<Component>> removeBlock(Vector3i pos) {
+        int octant = TreeUtils.octantOfPosition(pos, size);
         Vector3i subPosition = TreeUtils.modVector(pos, size/2);
-        Component shrinkingComponent = null; //Set to null initially just to avoid the uninitialized error, but it should always be set to something later.
+        Set<Component> splitComponents = null; //Set to null initially just to avoid the uninitialized error, but it should always be set to something later.
         // If the children are leaves, they don't actually have references to Components, so a more brute-force method is necessary to find which of the components of this node contains the removed block.
         if(size == 2) {
             children[octant] = null;
             outer : for(Component component : components) {
                 for(Pair<Integer, Component> subcomponent : component.subcomponents) {
                     if(subcomponent.a == octant) { // This will be satisfied exactly once.
-                        shrinkingComponent = component;
                         component.subcomponents.remove(subcomponent);
+                        splitComponents = component.checkConnectivity();
+                        //component.supported must already be false, because all UnloadedComponents have size at least 32, so that doesn't need to be updated.
                         break outer;
                     }
                 }
             }
         } else {
-            Pair<Node, Pair<Set<Component>, Component>> childResult = children[octant].removeBlock(subPosition);
+            Pair<Node, Set<Component>> childResult = children[octant].removeBlock(subPosition);
             children[octant] = childResult.a;
-            shrinkingComponent = childResult.b.b;
+            splitComponents = childResult.b;
         }
-        if(shrinkingComponent == null) {
-            logger.error("shrinkingComponent was null. Size "+size+". Components: "+components.toString());
-        }
-        Set<Component> splitComponents = shrinkingComponent.checkConnectivity();
-        if(splitComponents.size() != 1) {
-            components.remove(shrinkingComponent);
-            components.addAll(splitComponents);
-        }
-        return new Pair(components.isEmpty() ? null : this, new Pair(splitComponents, shrinkingComponent.parent));
+        return new Pair(components.isEmpty() ? null : this, splitComponents);
     }
     
     @Override
     public Pair<Component, Set<Integer>> addBlock(Vector3i pos) {
-        int octant = TreeUtils.octantOfPosition(size, pos);
+        int octant = TreeUtils.octantOfPosition(pos, size);
         Vector3i subPosition = TreeUtils.modVector(pos, size/2);
         Component newComponent = null;
         Component parentComponent = null; // If newComponent != null, parentComponent == newComponent.parent. Set to null initially just to avoid the uninitialized error, but it should always be set to something later.
@@ -127,7 +113,8 @@ public class InternalNode extends Node {
         }
         boolean merged = false; // Keeps track of whether newComponent.parent ends up as something already in the components list.
         if(!exposure.isEmpty()) {
-            for(Component component : components) {
+            List<Component> tempComponents = new ArrayList(components); // The list may be changed during the iteration, so the iterator may misbehave.
+            for(Component component : tempComponents) {
                 if(component == parentComponent) {
                     continue;
                 }
@@ -144,5 +131,91 @@ public class InternalNode extends Node {
             components.add(parentComponent);
         }
         return new Pair<>(parentComponent, exposure);
+    }
+    
+    /**
+     * Returns an octant if there's only one loaded child node, -1 if there are none, and -2 if there are multiple.
+     */
+    @Override
+    public Pair<Integer, Node> canShrink() {
+        Pair<Integer, Node> result = new Pair(-1, null);
+        for(int i=0; i<8; i++) {
+            if(children[i] != null && !(children[i] instanceof UnloadedNode)) {
+                if(result.a == -1) {
+                    result.a = i;
+                    result.b = children[i];
+                } else {
+                    result.a = -2;
+                    result.b = null;
+                }
+            }
+        }
+        return result;
+    }
+    
+    /**
+     * Replace an UnloadedNode with something else.
+     */
+    @Override
+    public Set<Component> insertNewChunk(Node newNode, Vector3i pos) {
+        //logger.info("Inserting at relative position "+pos+". Node size = "+size+". Octant = "+TreeUtils.octantOfPosition(pos, size)+".");
+        if(newNode.size >= size) {
+            logger.warn("Adding already loaded chunk.");
+            return new HashSet();
+        }
+        int octant = TreeUtils.octantOfPosition(pos, size);
+        Node oldChild = children[octant];
+        if(oldChild instanceof UnloadedNode) {
+            children[octant] = TreeUtils.buildExpandedNode(newNode, TreeUtils.modVector(pos, size/2), size/2);
+            Component component = oldChild.getComponents().get(0).parent;
+            component.subcomponents.removeIf((Pair<Integer,Component> subcomponent) -> subcomponent.a == octant);
+            for(Component childComponent : children[octant].getComponents()) {
+                childComponent.parent = component;
+                component.subcomponents.add(new Pair(octant, childComponent));
+            }
+            return component.checkConnectivity();
+        } else {
+            return oldChild.insertNewChunk(newNode, TreeUtils.modVector(pos, size/2));
+        }
+    }
+    
+    /**
+     * Replace something else with an UnloadedNode.
+     */
+    @Override
+    public Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize) {
+        UnloadedNode uNode = new UnloadedNode(size);
+        Pair<Node, Component> unloadedResult = new Pair(uNode, uNode.getComponents().get(0));
+        if(chunkSize == size) {
+            return unloadedResult;
+        } else {
+            int octant = TreeUtils.octantOfPosition(pos, size);
+            
+            Node oldChild = children[octant];
+            if(oldChild == null) {
+                oldChild = new InternalNode(size/2, new Node[8]);
+            }
+            Pair<Node, Component> childResult = oldChild.removeChunk(TreeUtils.modVector(pos, size/2), chunkSize);
+            children[octant] = childResult.a;
+            if(canShrink().a == -1) { // All the children are unloaded.
+                return unloadedResult;
+            }
+            Component newComponent = new Component(octant, childResult.b, this);
+            if(children[octant] instanceof UnloadedNode) {
+                for(Component component : components) {
+                    component.subcomponents.removeIf((Pair<Integer,Component> subcomponent) -> subcomponent.a == octant);
+                }
+            }
+            
+            List<Component> tempComponents = new ArrayList(components); // The list may be changed during the iteration, so the iterator may misbehave.
+            components.add(newComponent);
+            for(Component component : tempComponents) {
+                if(component.isTouching(newComponent, 0)) {
+                    component.merge(newComponent);
+                    newComponent = component;
+                }
+            }
+            return new Pair(this, newComponent);
+        }
     }
 }

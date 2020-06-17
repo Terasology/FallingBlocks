@@ -42,29 +42,20 @@ public class FallingBlockSystem extends BaseComponentSystem{
     @In
     private BlockManager blockManager;
     private Block brick;
+    private Block plank;
     
-    private Map<Vector3i, Node> rootNodes;
+    private Node rootNode = null;
+    private Vector3i rootNodePos = null;
     private static int ROOT_NODE_SIZE = ChunkConstants.SIZE_X; //This actually needs to be the minimum of SIZE_X, SIZE_Y and SIZE_Z, but it's assumed later that SIZE_Y >= SIZE_X = SIZE_Z anyway.
+    private static final int ROOT_OFFSET = 0xAAAAAAA0; //The octree structure divides at different levels in fixed locations. This constant is chosen so that, as far as possible, the highest-level divisions are far from the origin, so that the root node isn't likely to need to be very large just because the relevant region overlaps one of the divisions.
 
     @In
     private CameraTargetSystem cameraTarget;
     
     @Override
     public void initialise() {
-        rootNodes = new HashMap<>();
         brick = blockManager.getBlock("coreAssets:brick");
-        
-        /*
-        int[] directions = new int[]{4,2,1,-1,-2,-4};
-        for(int oct1 = 0; oct1<8; oct1++) {
-            logger.info("bitCount("+oct1+") = "+Integer.bitCount(oct1));
-            for(int side : directions) {
-                logger.info("isOctantOnSide("+oct1+","+side+") = "+TreeUtils.isOctantOnSide(oct1, side));
-            }
-            for(int oct2 = 0; oct2 < 8; oct2++) {
-                logger.info("adjacent("+oct1+","+oct2+") = "+TreeUtils.isAdjacent(oct1, oct2));
-            }
-        }*/
+        plank = blockManager.getBlock("coreAssets:plank");
     }
     
     // TODO: Maybe make this a WorldChangeListener instead? Compare efficiency. Aggregate changes into batches (should improve efficiency and avoid confusing reentrant behaviour when falling blocks cause block updates).
@@ -80,66 +71,99 @@ public class FallingBlockSystem extends BaseComponentSystem{
         boolean oldSolid = TreeUtils.isSolid(event.getOldType());
         boolean newSolid = TreeUtils.isSolid(event.getNewType());
         if(oldSolid != newSolid) {
-            Vector3i pos = event.getBlockPosition();
-        Vector3i relativePos = TreeUtils.modVector(pos, ROOT_NODE_SIZE);
-        Vector3i chunkPos = new Vector3i(pos).sub(relativePos);
-            Node rootNode = rootNodes.get(chunkPos);
+            Vector3i pos = new Vector3i(event.getBlockPosition()).sub(rootNodePos);
             Collection<Component> updatedComponents;
-            if(rootNode == null) { //necessarily newSolid == true.
-                rootNode = TreeUtils.buildSingletonNode(ROOT_NODE_SIZE, relativePos);
-                updatedComponents = rootNode.getComponents();
-            } else if(newSolid) {
+            if(newSolid) {
                 updatedComponents = new HashSet();
-                updatedComponents.add(rootNode.addBlock(relativePos).a);
+                updatedComponents.add(rootNode.addBlock(pos).a);
             } else {
-                Pair<Node, Pair<Set<Component>, Component>> result = rootNode.removeBlock(relativePos);
-                rootNode = result.a;
-                updatedComponents = result.b.a;
+                updatedComponents = rootNode.removeBlock(pos).b;
             }
             
-            if(rootNode != null) {
-                updatedComponents.stream()
-                    .filter((Component c) -> !c.isTouchingAnySide())
-                    .map((Component c) -> c.getPositions(chunkPos, ROOT_NODE_SIZE))
-                    .forEach(this::blockGroupDetached);
+            for(Component component : updatedComponents) {
+                checkComponentDetached(component);
             }
         }
     }
     
     @ReceiveEvent
     public void chunkLoaded(OnChunkLoaded event, EntityRef entity) {
-        Vector3i pos = event.getChunkPos();
-        pos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
+        Vector3i chunkPos = event.getChunkPos();
+        chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
-            Node node = TreeUtils.buildNode(worldProvider, ROOT_NODE_SIZE, pos.x, pos.y + y, pos.z);
-            if(node != null) {
-                Vector3i nodePos = new Vector3i(pos).addY(y);
-                logger.info("Creating new root node at "+nodePos);
-                rootNodes.put(nodePos, node);
-                node.getInternalPositions(nodePos).forEach(this::blockGroupDetached);
+            Vector3i pos = new Vector3i(chunkPos).addY(y);
+            //logger.info("Loading chunk at "+pos+".");
+            Node node = TreeUtils.buildNode(worldProvider, ROOT_NODE_SIZE, pos);
+            if(rootNodePos == null) {
+                //logger.info("Starting new root node.");
+                rootNode = node;
+                rootNodePos = pos;
+            }
+            while(!isWithinRootNode(pos)) {
+                Vector3i relativePos = TreeUtils.modVector(new Vector3i(rootNodePos).add(ROOT_OFFSET, ROOT_OFFSET, ROOT_OFFSET), rootNode.size * 2);
+                Vector3i newRootNodePos = new Vector3i(rootNodePos).sub(relativePos);
+                //logger.info("Expanding root node from "+rootNodePos+", "+rootNode.size+" to "+newRootNodePos);
+                // buildExpandedNode could return a different type of node if its old node argument is a non-internal node, with the same size as the size argument. That can't happen here.
+                rootNode = TreeUtils.buildExpandedNode(rootNode, relativePos, rootNode.size*2);
+                rootNodePos = newRootNodePos;
+            }
+            if(rootNode != node) {
+                Set<Component> updatedComponents = rootNode.insertNewChunk(node, new Vector3i(pos).sub(rootNodePos));
+                for(Component component : updatedComponents) {
+                    checkComponentDetached(component);
+                }
             }
         }
     }
     
     @ReceiveEvent
     public void chunkUnloaded(BeforeChunkUnload event, EntityRef entity) {
-        Vector3i pos = event.getChunkPos();
-        pos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
+        Vector3i chunkPos = event.getChunkPos();
+        chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
-            rootNodes.remove(new Vector3i(pos).addY(y));
+            Vector3i pos = new Vector3i(chunkPos).addY(y);
+            rootNode = rootNode.removeChunk(pos.sub(rootNodePos), ROOT_NODE_SIZE).a;
+            Pair<Integer, Node> shrinking = rootNode.canShrink();
+            if(shrinking.a >= 0) {
+                //logger.info("Shrinking root node to octant "+shrinking.a+".");
+                rootNode = shrinking.b;
+                rootNodePos.sub(TreeUtils.octantVector(shrinking.a, rootNode.size));
+            } else if(shrinking.a == -1) {
+                rootNode = null;
+                rootNodePos = null;
+            }
+        }
+    }
+    
+    private boolean isWithinRootNode(Vector3i pos) {
+        return rootNodePos != null
+            && pos.x >= rootNodePos.x
+            && pos.y >= rootNodePos.y
+            && pos.z >= rootNodePos.z
+            && pos.x < rootNodePos.x + rootNode.size
+            && pos.y < rootNodePos.y + rootNode.size
+            && pos.z < rootNodePos.z + rootNode.size;
+    }
+    
+    private void checkComponentDetached(Component component) {
+        if(component.node != rootNode) {
+            throw new RuntimeException("Detached node not actually root node. Size="+component.node.size);
+        }
+        if(!component.supported && !component.isTouchingAnySide()) {
+            blockGroupDetached(component.getPositions(rootNodePos));
         }
     }
     
     private void blockGroupDetached(Set<Vector3i> positions) {
-        logger.info("Found detached group!");
+        //logger.info("Found detached group!");
         for(Vector3i pos : positions) {
             // for debugging purposes.
-            logger.info("Bricking "+pos);
+            //logger.info("Bricking "+pos);
             worldProvider.setBlock(pos, brick);
         }
     }
     
-    @Command(shortDescription = "Print debug information relating to FallingBlocks.", helpText = "Print the location of the targeted block within the octree, and connected components of all the nodes up to size *level*.")
+    /*@Command(shortDescription = "Print debug information relating to FallingBlocks.", helpText = "Print the location of the targeted block within the octree, and connected components of all the nodes up to size *level*.")
     public String printOctreeData(@CommandParam(value = "Level") int level) {
         if(!cameraTarget.isTargetAvailable()) {
             return "No indicated block.";
@@ -160,5 +184,5 @@ public class FallingBlockSystem extends BaseComponentSystem{
             node = iNode.children[octant];
         }
         return result;
-    }
+    }*/
 }

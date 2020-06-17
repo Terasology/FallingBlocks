@@ -17,7 +17,8 @@ public class Component {
     // Pairs of the index of a child node of this component's node, and a component within that child which is part of this. The components are null if the child node is a leaf.
     public Set<Pair<Integer, Component>> subcomponents;
     public Component parent;
-    public final InternalNode node;
+    public final Node node;
+    public boolean supported; //Does this component contain any UnloadedComponents (which are assumed to be supported)?
     
     public Component(int childIndex, Component childComponent, InternalNode node) {
         subcomponents = new HashSet<>();
@@ -26,16 +27,23 @@ public class Component {
             childComponent.parent = this;
         }
         this.node = node;
+        resetSupported();
     }
     
-    private Component(Set<Pair<Integer, Component>> subcomponents, Component parent, InternalNode node) {
+    Component(Set<Pair<Integer, Component>> subcomponents, Component parent, Node node) {
         this.subcomponents = subcomponents;
         this.parent = parent;
         this.node = node;
+        resetSupported();
+    }
+    
+    public void resetSupported() {
+        supported = subcomponents.stream().anyMatch((Pair<Integer, Component> sc) -> sc.b != null && sc.b.supported);
     }
     
     public void merge(Component sibling) {
         subcomponents.addAll(sibling.subcomponents);
+        supported = supported || sibling.supported;
         for(Pair<Integer, Component> newSubcomponent : sibling.subcomponents) {
             if(newSubcomponent.b != null) {
                 newSubcomponent.b.parent = this;
@@ -59,6 +67,9 @@ public class Component {
     }
     
     public boolean isTouching(Component sibling, int direction) {
+        if(sibling instanceof UnloadedComponent) {
+            return sibling.isTouching(this, -direction);
+        }
         for(Pair<Integer, Component> subcomponent1 : subcomponents) {
             for(Pair<Integer, Component> subcomponent2 : sibling.subcomponents) {
                 int adjacency = TreeUtils.isAdjacent(subcomponent1.a, subcomponent2.a, direction);
@@ -77,9 +88,11 @@ public class Component {
     }
     
     /**
-     * Tests whether the subcomponents are actually touching, and returns a list of the
-     * connected components this should split into, updating the parent's references too.
-     * If the set has 1 element, it's this component. Otherwise, none of them are.
+     * Tests whether the subcomponents are actually touching, and updates the node and
+     * parent component with the new components this splits into, recursively splitting
+     * the parent as well if necessary.
+     *
+     * Returns the top-level components (i.e. most distant ancestor) resulting from this split.
      */
     public Set<Component> checkConnectivity() {
         Set<Component> result = new HashSet<>();
@@ -109,7 +122,9 @@ public class Component {
                 Component fragment = new Component(connectedComponent, parent, node);
                 result.add(fragment);
                 for(Pair<Integer, Component> subcomponent : connectedComponent) {
-                    subcomponent.b.parent = fragment;
+                    if(subcomponent.b != null) {
+                        subcomponent.b.parent = fragment;
+                    }
                 }
             }
         }
@@ -131,7 +146,17 @@ public class Component {
                 parent.subcomponents.add(new Pair(thisOctant, fragment));
             }
         }
-        return result;
+        if(result.size() != 1) {
+            node.getComponents().remove(this);
+            node.getComponents().addAll(result);
+        } else {
+            resetSupported();
+        }
+        if(parent == null) {
+            return result;
+        } else {
+            return parent.checkConnectivity();
+        }
     }
             
     
@@ -153,8 +178,9 @@ public class Component {
             || isTouching(-4);
     }
     
-    public Set<Vector3i> getPositions(Vector3i pos, int size) {
+    public Set<Vector3i> getPositions(Vector3i pos) {
         Set<Vector3i> result = new HashSet();
+        int size = node.size;
         for(Pair<Integer, Component> subcomponent : subcomponents) {
             Vector3i subPosition = new Vector3i(pos);
             int octant = subcomponent.a;
@@ -164,7 +190,7 @@ public class Component {
             if(subcomponent.b == null) {
                 result.add(subPosition);
             } else {
-                result.addAll(subcomponent.b.getPositions(subPosition, size/2));
+                result.addAll(subcomponent.b.getPositions(subPosition));
             }
         }
         return result;

@@ -11,14 +11,14 @@ import java.util.stream.Stream;
 import org.terasology.math.geom.Vector3i;
 
 /**
- * A singleton representing a single solid block.
+ * Nodes to fill in the spaces in the octree where the chunks aren't actually loaded.
  */
-public class LeafNode extends Node {
-    public static final LeafNode node = new LeafNode();
-    private final List<Component> components = Arrays.asList((Component)null);
+public class UnloadedNode extends Node {
+    private final List<Component> components;
     
-    private LeafNode() {
-        size = 1;
+    public UnloadedNode(int size) {
+        this.size = size;
+        components = Arrays.asList(new UnloadedComponent(this));
     }
     
     // The list is immutable, so it's safe to return.
@@ -32,17 +32,17 @@ public class LeafNode extends Node {
      */
     @Override
     public Pair<Integer, Node> canShrink() {
-        return new Pair(-2, null);
+        return new Pair(-1, null);
     }
     
     @Override
     public Pair<Node, Set<Component>> removeBlock(Vector3i pos) {
-        return new Pair(null, null);
+        throw new RuntimeException("Trying to remove a block from an unloaded node.");
     }
     
     @Override
     public Pair<Component, Set<Integer>> addBlock(Vector3i pos) {
-        throw new RuntimeException("Trying to add a block to a leaf node even though it should already have a block there.");
+        throw new RuntimeException("Trying to add a block to an unloaded node.");
     }
     
     /**
@@ -50,7 +50,7 @@ public class LeafNode extends Node {
      */
     @Override
     public Set<Component> insertNewChunk(Node newNode, Vector3i pos) {
-        throw new RuntimeException("Trying to insert new chunk in a leaf node. Node can't replace itself.");
+        throw new RuntimeException("Trying to insert new chunk in an unloaded node. Node can't replace itself.");
     }
     
     /**
@@ -58,6 +58,6 @@ public class LeafNode extends Node {
      */
     @Override
     public Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize) {
-        throw new RuntimeException("Trying to unload a single leaf.");
+        throw new RuntimeException("Trying to unload an already unloaded chunk.");
     }
 }

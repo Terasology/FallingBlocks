@@ -17,9 +17,9 @@ public class TreeUtils {
     /**
      * Produce either a new node representing the given region, or null if the region has no solid blocks.
      */
-    public static Node buildNode(WorldProvider world, int size, int x, int y, int z) {
+    public static Node buildNode(WorldProvider world, int size, Vector3i pos) {
         if(size == 1) {
-            if(isSolid(world.getBlock(x,y,z))) {
+            if(isSolid(world.getBlock(pos))) {
                 return LeafNode.node;
             } else {
                 return null;
@@ -31,7 +31,7 @@ public class TreeUtils {
             for(int cx=0; cx<2; cx++) {
                 for(int cy=0; cy<2; cy++) {
                     for(int cz=0; cz<2; cz++) {
-                        children[i] = buildNode(world, size/2, x+cx*size/2, y+cy*size/2, z+cz*size/2);
+                        children[i] = buildNode(world, size/2, new Vector3i(cx,cy,cz).scale(size/2).add(pos));
                         if(children[i] != null) {
                             anyChildren = true;
                         }
@@ -39,7 +39,7 @@ public class TreeUtils {
                     }
                 }
             }
-            if(anyChildren) {
+            if(anyChildren || size >= 32) { //TODO: after null nodes are replaced with AirNodes, this hacky workaround will be unnecessary.
                 return new InternalNode(size, children);
             } else {
                 return null;
@@ -56,9 +56,30 @@ public class TreeUtils {
         } else {
             Node[] children = new Node[8];
             Node child = buildSingletonNode(size/2, modVector(pos, size/2));
-            children[octantOfPosition(size, pos)] = child;
+            children[octantOfPosition(pos, size)] = child;
             return new InternalNode(size, children);
         }
+    }
+    
+    /**
+     * Produce a new node that is all unloaded except for one preexisting child node.
+     */
+    public static Node buildExpandedNode(Node old, Vector3i pos, int size) {
+        if(old.size == size) {
+            return old;
+        } else if(old.size < size/2) {
+            old = buildExpandedNode(old, modVector(pos, size/2), size/2);
+        }
+        Node[] children = new Node[8];
+        int octant = octantOfPosition(pos, size);
+        for(int i=0; i<8; i++) {
+            if(i == octant) {
+                children[i] = old;
+            } else {
+                children[i] = new UnloadedNode(size/2);
+            }
+        }
+        return new InternalNode(size, children);
     }
     
     /**
@@ -88,16 +109,20 @@ public class TreeUtils {
     /**
      * In a node with the given size, which octant would the given position be in?
      */
-    public static int octantOfPosition(int size, Vector3i pos) {
+    public static int octantOfPosition(Vector3i pos, int size) {
         return (pos.x >= size/2 ? 4 : 0) + (pos.y >= size/2 ? 2 : 0) + (pos.z >= size/2 ? 1 : 0);
     }
     
-    public static boolean isPositionInternal(int size, Vector3i pos) {
+    public static boolean isPositionInternal(Vector3i pos, int size) {
         return (pos.x > 0) && (pos.y > 0) && (pos.z > 0)
                && (pos.x < size-1) && (pos.y < size-1) && (pos.z < size-1);
     }
     
     public static Vector3i modVector(Vector3i v, int s) {
         return new Vector3i((v.x % s + s) % s, (v.y % s + s) % s, (v.z % s + s) % s);
+    }
+    
+    public static Vector3i octantVector(int octant, int size) {
+        return new Vector3i(isOctantOnSide(octant, 4) ? size : 0, isOctantOnSide(octant, 2) ? size : 0, isOctantOnSide(octant, 1) ? size : 0);
     }
 }
