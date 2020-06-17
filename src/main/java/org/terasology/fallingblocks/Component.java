@@ -19,6 +19,7 @@ public class Component {
     public Component parent;
     public final Node node;
     public boolean supported; //Does this component contain any UnloadedComponents (which are assumed to be supported)?
+    boolean active = true; //Is this component currently part of the overall octree structure?
     
     public Component(int childIndex, Component childComponent, InternalNode node) {
         subcomponents = new HashSet<>();
@@ -42,6 +43,8 @@ public class Component {
     }
     
     public void merge(Component sibling) {
+        TreeUtils.assrt(sibling.node == node);
+        sibling.inactivate();
         subcomponents.addAll(sibling.subcomponents);
         supported = supported || sibling.supported;
         for(Pair<Integer, Component> newSubcomponent : sibling.subcomponents) {
@@ -62,7 +65,6 @@ public class Component {
             parent = sibling.parent;
         } else if(sibling.parent != parent && sibling.parent != null) {
             parent.merge(sibling.parent);
-            parent.node.getComponents().remove(sibling.parent);
         }
     }
     
@@ -147,7 +149,8 @@ public class Component {
             }
         }
         if(result.size() != 1) {
-            node.getComponents().remove(this);
+            TreeUtils.assrt(!result.contains(this));
+            inactivate();
             node.getComponents().addAll(result);
         } else {
             resetSupported();
@@ -196,6 +199,15 @@ public class Component {
         return result;
     }
     
+    public void inactivate() {
+        node.getComponents().remove(this);
+        active = false;
+    }
+    
+    public boolean isActive() {
+        return active;
+    }
+    
     public String toString() {
         String result = "Cmp "+node.size+" [";
         boolean first = true;
@@ -213,4 +225,42 @@ public class Component {
         }
         return result+"]";
     }
+    
+    public void validate() {
+        TreeUtils.assrt(node.getComponents().contains(this));
+        TreeUtils.assrt(active);
+        if(parent != null) {
+            int found = 0;
+            for(Pair<Integer, Component> subcomponent : parent.subcomponents) {
+                if(subcomponent.b == this) {
+                    found++;
+                }
+            }
+            TreeUtils.assrt(found >= 1);
+            TreeUtils.assrt(found <= 1);
+        }
+        for(Pair<Integer, Component> subcomponent : subcomponents) {
+            if(node.size == 2) {
+                TreeUtils.assrt(subcomponent.b == null);
+                TreeUtils.assrt(((InternalNode)node).children[subcomponent.a] != null);
+            } else {
+                TreeUtils.assrt(subcomponent.b.parent == this);
+                TreeUtils.assrt(subcomponent.b.isActive()); // In theory, this is covered by the next test (if it's in a node's component list, it'll be validated), but it looks like it's failing.
+                TreeUtils.assrt(((InternalNode)node).children[subcomponent.a].getComponents().contains(subcomponent.b));
+            }
+        }
+        boolean prevSupported = supported;
+        resetSupported();
+        TreeUtils.assrt(prevSupported == supported);
+        // Checking that the subcomponents actually do all touch would be good, but also complicated.
+    }
+    
+    /*@Override
+    public int hashCode() {
+        if(isActive()) {
+            return super.hashCode();
+        } else {
+            throw new RuntimeException(); // hacky way of checking that this isn't added to hashSets after being inactivated.
+        }
+    }*/
 }

@@ -4,6 +4,7 @@
 package org.terasology.fallingblocks;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -14,17 +15,23 @@ import org.terasology.math.geom.Vector3i;
  * Nodes to fill in the spaces in the octree where the chunks aren't actually loaded.
  */
 public class UnloadedNode extends Node {
-    private final List<Component> components;
+    private final Set<Component> components;
+    private final Component component;
     
     public UnloadedNode(int size) {
         this.size = size;
-        components = Arrays.asList(new UnloadedComponent(this));
+        component = new UnloadedComponent(this);
+        components = new HashSet(Arrays.asList(component));
     }
     
     // The list is immutable, so it's safe to return.
     @Override
-    public List<Component> getComponents() {
+    public Set<Component> getComponents() {
         return components;
+    }
+    
+    public Component getComponent() {
+        return component;
     }
     
     /**

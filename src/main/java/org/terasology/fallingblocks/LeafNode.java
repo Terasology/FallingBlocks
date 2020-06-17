@@ -4,6 +4,7 @@
 package org.terasology.fallingblocks;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -15,15 +16,14 @@ import org.terasology.math.geom.Vector3i;
  */
 public class LeafNode extends Node {
     public static final LeafNode node = new LeafNode();
-    private final List<Component> components = Arrays.asList((Component)null);
+    private final Set<Component> components = new HashSet(Arrays.asList((Component)null));
     
     private LeafNode() {
         size = 1;
     }
     
-    // The list is immutable, so it's safe to return.
     @Override
-    public List<Component> getComponents() {
+    public Set<Component> getComponents() {
         return components;
     }
     

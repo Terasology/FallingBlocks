@@ -16,7 +16,7 @@ import org.terasology.math.geom.Vector3i;
 public abstract class Node {
     public int size;
     
-    public abstract List<Component> getComponents();
+    public abstract Set<Component> getComponents();
     
     /**
      * Returns an octant if there's only one loaded child node, -1 if there are none, and -2 if there are multiple.
@@ -39,4 +39,10 @@ public abstract class Node {
      * Replace something else with an UnloadedNode.
      */
     public abstract Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize);
+    
+    /**
+     * For debugging purposes: check that all the state is valid.
+     */
+    public void validate() {
+    }
 }

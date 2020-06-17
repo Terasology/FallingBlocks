@@ -125,4 +125,10 @@ public class TreeUtils {
     public static Vector3i octantVector(int octant, int size) {
         return new Vector3i(isOctantOnSide(octant, 4) ? size : 0, isOctantOnSide(octant, 2) ? size : 0, isOctantOnSide(octant, 1) ? size : 0);
     }
+    
+    public static void assrt(boolean valid) {
+        if(!valid) {
+            throw new AssertionError();
+        }
+    }
 }

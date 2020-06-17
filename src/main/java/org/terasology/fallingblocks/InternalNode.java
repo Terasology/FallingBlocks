@@ -25,13 +25,13 @@ public class InternalNode extends Node {
     public Node[] children;
     
     // The connected components of the solid blocks in this region
-    private ArrayList<Component> components;
+    private Set<Component> components;
     
     public InternalNode(int size, Node[] children) {
         this.size = size;
         this.children = children;
         
-        components = new ArrayList<>();
+        components = new HashSet<>();
         for(int i=0; i<children.length; i++) {
             if(children[i] != null) {
                 for(Component c : children[i].getComponents()) {
@@ -40,19 +40,24 @@ public class InternalNode extends Node {
             }
         }
         
-        for(int i=0; i<components.size(); i++) { //TODO: find a better way to detect connected components of a graph without an edge list.
-            for(int j=i+1; j<components.size(); j++) {
-                if(components.get(i).isTouching(components.get(j), 0)) {
-                    components.get(i).merge(components.get(j));
-                    components.remove(j);
-                    j = i; //It's about to be incremented, so effectively reset it to i+1.
+        // There are better ways of doing this, but this should suffice.
+        Set<Component> tempComponents = new HashSet(components);
+        for(Component c1 : tempComponents) {
+            boolean merging = true;
+            while(merging) {
+                merging = false;
+                for(Component c2 : tempComponents) {
+                    if(c1.isActive() && c2.isActive() && c1 != c2 && c1.isTouching(c2, 0)) {
+                        c1.merge(c2);
+                        merging = true;
+                    }
                 }
             }
         }
     }
     
     @Override
-    public List<Component> getComponents() {
+    public Set<Component> getComponents() {
         return components;
     }
     
@@ -91,7 +96,7 @@ public class InternalNode extends Node {
         Set<Integer> exposure;
         if(children[octant] == null) {
             children[octant] = TreeUtils.buildSingletonNode(size/2, subPosition);
-            newComponent = children[octant].getComponents().get(0);
+            newComponent = children[octant].getComponents().iterator().next();
             exposure = new HashSet<>();
             if(subPosition.x == 0) exposure.add(-4);
             if(subPosition.y == 0) exposure.add(-2);
@@ -113,7 +118,7 @@ public class InternalNode extends Node {
         }
         boolean merged = false; // Keeps track of whether newComponent.parent ends up as something already in the components list.
         if(!exposure.isEmpty()) {
-            List<Component> tempComponents = new ArrayList(components); // The list may be changed during the iteration, so the iterator may misbehave.
+            Set<Component> tempComponents = new HashSet(components); // The list may be changed during the iteration, so the iterator may misbehave.
             for(Component component : tempComponents) {
                 if(component == parentComponent) {
                     continue;
@@ -128,6 +133,7 @@ public class InternalNode extends Node {
             exposure.removeIf((Integer side) -> !TreeUtils.isOctantOnSide(octant, side));
         }
         if(!merged) {
+            TreeUtils.assrt(parentComponent.isActive());
             components.add(parentComponent);
         }
         return new Pair<>(parentComponent, exposure);
@@ -167,7 +173,7 @@ public class InternalNode extends Node {
         Node oldChild = children[octant];
         if(oldChild instanceof UnloadedNode) {
             children[octant] = TreeUtils.buildExpandedNode(newNode, TreeUtils.modVector(pos, size/2), size/2);
-            Component component = oldChild.getComponents().get(0).parent;
+            Component component = ((UnloadedNode)oldChild).getComponent().parent;
             component.subcomponents.removeIf((Pair<Integer,Component> subcomponent) -> subcomponent.a == octant);
             for(Component childComponent : children[octant].getComponents()) {
                 childComponent.parent = component;
@@ -185,7 +191,7 @@ public class InternalNode extends Node {
     @Override
     public Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize) {
         UnloadedNode uNode = new UnloadedNode(size);
-        Pair<Node, Component> unloadedResult = new Pair(uNode, uNode.getComponents().get(0));
+        Pair<Node, Component> unloadedResult = new Pair(uNode, uNode.getComponent());
         if(chunkSize == size) {
             return unloadedResult;
         } else {
@@ -207,7 +213,7 @@ public class InternalNode extends Node {
                 }
             }
             
-            List<Component> tempComponents = new ArrayList(components); // The list may be changed during the iteration, so the iterator may misbehave.
+            Set<Component> tempComponents = new HashSet(components); // The list may be changed during the iteration, so the iterator may misbehave.
             components.add(newComponent);
             for(Component component : tempComponents) {
                 if(component.isTouching(newComponent, 0)) {
@@ -216,6 +222,31 @@ public class InternalNode extends Node {
                 }
             }
             return new Pair(this, newComponent);
+        }
+    }
+    
+    @Override
+    public void validate() {
+        for(int i=0; i<8; i++) {
+            if(children[i] != null) {
+                TreeUtils.assrt(children[i].size == size/2);
+                for(Component component : children[i].getComponents()) {
+                    if(component != null) {
+                        TreeUtils.assrt(components.contains(component.parent));
+                    }
+                }
+                TreeUtils.assrt((size == 2) == (children[i] instanceof LeafNode));
+                children[i].validate();
+            } else {
+                TreeUtils.assrt(size <= 32); // Temporary, until I make proper empty leaf nodes.
+            }
+        }
+        for(Component component : components) {
+            component.validate();
+            TreeUtils.assrt(component.node == this);
+            for(Component otherComponent : components) {
+                TreeUtils.assrt(component == otherComponent || !component.isTouching(otherComponent, 0));
+            }
         }
     }
 }
