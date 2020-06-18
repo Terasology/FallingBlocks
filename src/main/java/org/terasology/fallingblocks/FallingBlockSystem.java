@@ -158,18 +158,20 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     public void chunkUnloaded(BeforeChunkUnload event, EntityRef entity) {
         Vector3i chunkPos = event.getChunkPos();
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
-        if(!worldProvider.isBlockRelevant(chunkPos)) {
-            logger.warn("Unloading chunk but already irrelevant.");
-            return;
-        }
         for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
             rootNode = rootNode.removeChunk(pos.sub(rootNodePos), ROOT_NODE_SIZE).a;
             Pair<Integer, Node> shrinking = rootNode.canShrink();
             if(shrinking.a >= 0) {
-                //logger.info("Shrinking root node to octant "+shrinking.a+".");
+                //logger.info("Shrinking root node to octant "+shrinking.a+", size "+shrinking.b.size+".");
                 rootNode = shrinking.b;
-                rootNodePos.sub(TreeUtils.octantVector(shrinking.a, rootNode.size));
+                if(rootNode != null) {
+                    for(Component component : rootNode.getComponents()) {
+                        component.parent.inactivate();
+                        component.parent = null;
+                    }
+                }
+                rootNodePos.add(TreeUtils.octantVector(shrinking.a, rootNode.size));
             } else if(shrinking.a == -1) {
                 rootNode = null;
                 rootNodePos = null;
