@@ -197,7 +197,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     }
     
     private void blockGroupDetached(Set<Vector3i> positions) {
-        logger.info("Block group falling.");
+        //logger.info("Block group falling.");
         for(Vector3i pos : positions) {
             blockEntityRegistry.getBlockEntityAt(pos).send(new DestroyEvent(EntityRef.NULL, EntityRef.NULL, fallingDamageType));
         }

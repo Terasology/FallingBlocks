@@ -120,7 +120,8 @@ public class InternalNode extends Node {
         if(!exposure.isEmpty()) {
             Set<Component> tempComponents = new HashSet(components); // The list may be changed during the iteration, so the iterator may misbehave.
             for(Component component : tempComponents) {
-                if(component == parentComponent) {
+                // The initial value of parentComponent can appear later in the list, after it has already been merged into something. To catch that case, we have to check that `component` is active (or equivalently, components.contains(component)).
+                if(component == parentComponent || !component.isActive()) {
                     continue;
                 }
                 // The test for isTouching here could be refined to something referring to the new block position, but I'm keeping it as the simpler less efficient version initially.
