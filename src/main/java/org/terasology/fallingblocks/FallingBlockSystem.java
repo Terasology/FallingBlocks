@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,7 +107,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                     continue;
                 }
                 Vector3i pos = new Vector3i(worldPos).sub(rootNodePos);
-                updatedComponents.add(rootNode.addBlock(pos).a);
+                Pair<Node, Pair<Component, Set<Integer>>> additionResult = rootNode.addBlock(pos);
+                rootNode = additionResult.a;
+                updatedComponents.add(additionResult.b.a);
             }
             for(Vector3i worldPos : oldRemovals) {
                 if(!worldProvider.isBlockRelevant(worldPos)) {
@@ -130,9 +131,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
-            //logger.info("Loading chunk at "+pos+".");
+            logger.info("Loading chunk at "+pos+".");
             Node node = TreeUtils.buildNode(worldProvider, ROOT_NODE_SIZE, pos);
-            if(rootNodePos == null) {
+            if(rootNode == null) {
                 //logger.info("Starting new root node.");
                 rootNode = node;
                 rootNodePos = pos;
@@ -165,11 +166,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             if(shrinking.a >= 0) {
                 //logger.info("Shrinking root node to octant "+shrinking.a+", size "+shrinking.b.size+".");
                 rootNode = shrinking.b;
-                if(rootNode != null) {
-                    for(Component component : rootNode.getComponents()) {
-                        component.parent.inactivate();
-                        component.parent = null;
-                    }
+                for(Component component : rootNode.getComponents()) {
+                    component.parent.inactivate();
+                    component.parent = null;
                 }
                 rootNodePos.add(TreeUtils.octantVector(shrinking.a, rootNode.size));
             } else if(shrinking.a == -1) {

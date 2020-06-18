@@ -4,10 +4,10 @@
 package org.terasology.fallingblocks;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,7 @@ public class InternalNode extends Node {
     
     private static final Logger logger = LoggerFactory.getLogger(InternalNode.class);
     
-    // The child nodes, or nulls for empty regions, in the order:
+    // The child nodes, in the order:
     // -x-y-z, -x-y+z, -x+y-z, -x+y+z, +x-y-z, +x-y+z, +x+y-z, +x+y+z
     // The cardinal directions have corresponding labels:
     // +x: 4, +y: 2, +z: 1, -x: -4, -y: -2, -z: -1
@@ -33,10 +33,8 @@ public class InternalNode extends Node {
         
         components = new HashSet<>();
         for(int i=0; i<children.length; i++) {
-            if(children[i] != null) {
-                for(Component c : children[i].getComponents()) {
-                    components.add(new Component(i, c, this));
-                }
+            for(Component c : children[i].getComponents()) {
+                components.add(new Component(i, c, this));
             }
         }
         
@@ -68,7 +66,7 @@ public class InternalNode extends Node {
         Set<Component> splitComponents = null; //Set to null initially just to avoid the uninitialized error, but it should always be set to something later.
         // If the children are leaves, they don't actually have references to Components, so a more brute-force method is necessary to find which of the components of this node contains the removed block.
         if(size == 2) {
-            children[octant] = null;
+            children[octant] = EmptyNode.get(1);
             outer : for(Component component : components) {
                 for(Pair<Integer, Component> subcomponent : component.subcomponents) {
                     if(subcomponent.a == octant) { // This will be satisfied exactly once.
@@ -84,38 +82,29 @@ public class InternalNode extends Node {
             children[octant] = childResult.a;
             splitComponents = childResult.b;
         }
-        return new Pair(components.isEmpty() ? null : this, splitComponents);
+        return new Pair(components.isEmpty() ? EmptyNode.get(size) : this, splitComponents);
     }
     
     @Override
-    public Pair<Component, Set<Integer>> addBlock(Vector3i pos) {
+    public Pair<Node, Pair<Component, Set<Integer>>> addBlock(Vector3i pos) {
         int octant = TreeUtils.octantOfPosition(pos, size);
         Vector3i subPosition = TreeUtils.modVector(pos, size/2);
-        Component newComponent = null;
-        Component parentComponent = null; // If newComponent != null, parentComponent == newComponent.parent. Set to null initially just to avoid the uninitialized error, but it should always be set to something later.
-        Set<Integer> exposure;
-        if(children[octant] == null) {
-            children[octant] = TreeUtils.buildSingletonNode(size/2, subPosition);
-            newComponent = children[octant].getComponents().iterator().next();
-            exposure = new HashSet<>();
-            if(subPosition.x == 0) exposure.add(-4);
-            if(subPosition.y == 0) exposure.add(-2);
-            if(subPosition.z == 0) exposure.add(-1);
-            if(subPosition.x == size/2-1) exposure.add(4);
-            if(subPosition.y == size/2-1) exposure.add(2);
-            if(subPosition.z == size/2-1) exposure.add(1);
-        } else {
-            Pair<Component, Set<Integer>> p = children[octant].addBlock(subPosition);
-            newComponent = p.a;
-            parentComponent = newComponent.parent;
-            exposure = p.b;
-        }
+        Component parentComponent; // If newComponent != null, parentComponent == newComponent.parent.
+        
+        Pair<Node, Pair<Component, Set<Integer>>> p = children[octant].addBlock(subPosition);
+        children[octant] = p.a;
+        Component newComponent = p.b.a;
+        Set<Integer> exposure = p.b.b;
+        
         if(newComponent == null || newComponent.parent == null) { // The block hasn't merged into any existing components.
             parentComponent = new Component(octant, newComponent, this);
+            if(newComponent != null) {
+                newComponent.parent = parentComponent;
+            }
+        } else {
+            parentComponent = newComponent.parent;
         }
-        if(newComponent != null && newComponent.parent == null) {
-            newComponent.parent = parentComponent;
-        }
+        
         boolean merged = false; // Keeps track of whether newComponent.parent ends up as something already in the components list.
         if(!exposure.isEmpty()) {
             Set<Component> tempComponents = new HashSet(components); // The list may be changed during the iteration, so the iterator may misbehave.
@@ -137,7 +126,7 @@ public class InternalNode extends Node {
             TreeUtils.assrt(parentComponent.isActive());
             components.add(parentComponent);
         }
-        return new Pair<>(parentComponent, exposure);
+        return new Pair(this, new Pair(parentComponent, exposure));
     }
     
     /**
@@ -147,7 +136,7 @@ public class InternalNode extends Node {
     public Pair<Integer, Node> canShrink() {
         Pair<Integer, Node> result = new Pair(-1, null);
         for(int i=0; i<8; i++) {
-            if(children[i] != null && !(children[i] instanceof UnloadedNode)) {
+            if(!(children[i] instanceof UnloadedNode)) {
                 if(result.a == -1) {
                     result.a = i;
                     result.b = children[i];
@@ -168,7 +157,7 @@ public class InternalNode extends Node {
         //logger.info("Inserting at relative position "+pos+". Node size = "+size+". Octant = "+TreeUtils.octantOfPosition(pos, size)+".");
         if(newNode.size >= size) {
             logger.warn("Adding already loaded chunk.");
-            return new HashSet();
+            return Collections.EMPTY_SET;
         }
         int octant = TreeUtils.octantOfPosition(pos, size);
         Node oldChild = children[octant];
@@ -199,9 +188,6 @@ public class InternalNode extends Node {
             int octant = TreeUtils.octantOfPosition(pos, size);
             
             Node oldChild = children[octant];
-            if(oldChild == null) {
-                oldChild = new InternalNode(size/2, new Node[8]);
-            }
             Pair<Node, Component> childResult = oldChild.removeChunk(TreeUtils.modVector(pos, size/2), chunkSize);
             children[octant] = childResult.a;
             if(canShrink().a == -1) { // All the children are unloaded.
@@ -229,18 +215,14 @@ public class InternalNode extends Node {
     @Override
     public void validate() {
         for(int i=0; i<8; i++) {
-            if(children[i] != null) {
-                TreeUtils.assrt(children[i].size == size/2);
-                for(Component component : children[i].getComponents()) {
-                    if(component != null) {
-                        TreeUtils.assrt(components.contains(component.parent));
-                    }
+            TreeUtils.assrt(children[i].size == size/2);
+            for(Component component : children[i].getComponents()) {
+                if(component != null) {
+                    TreeUtils.assrt(components.contains(component.parent));
                 }
-                TreeUtils.assrt((size == 2) == (children[i] instanceof LeafNode));
-                children[i].validate();
-            } else {
-                TreeUtils.assrt(size <= 32); // Temporary, until I make proper empty leaf nodes.
             }
+            TreeUtils.assrt((size == 2) || ! (children[i] instanceof LeafNode));
+            children[i].validate();
         }
         for(Component component : components) {
             component.validate();

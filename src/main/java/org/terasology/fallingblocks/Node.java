@@ -5,7 +5,6 @@ package org.terasology.fallingblocks;
 
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import org.terasology.math.geom.Vector3i;
 
@@ -28,7 +27,7 @@ public abstract class Node {
     /**
      * Returns the component the new block ended up in, and which surfaces the new block is exposed to.
      */
-    public abstract Pair<Component, Set<Integer>> addBlock(Vector3i pos);
+    public abstract Pair<Node, Pair<Component, Set<Integer>>> addBlock(Vector3i pos);
     
     /**
      * Replace an UnloadedNode with something else.

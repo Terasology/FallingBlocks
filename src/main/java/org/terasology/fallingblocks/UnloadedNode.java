@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Stream;
 
 import org.terasology.math.geom.Vector3i;
 
@@ -48,7 +47,7 @@ public class UnloadedNode extends Node {
     }
     
     @Override
-    public Pair<Component, Set<Integer>> addBlock(Vector3i pos) {
+    public Pair<Node, Pair<Component, Set<Integer>>> addBlock(Vector3i pos) {
         throw new RuntimeException("Trying to add a block to an unloaded node.");
     }
     

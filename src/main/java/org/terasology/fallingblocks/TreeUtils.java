@@ -15,49 +15,33 @@ public class TreeUtils {
     }
     
     /**
-     * Produce either a new node representing the given region, or null if the region has no solid blocks.
+     * Produce either a new node representing the given region.
      */
     public static Node buildNode(WorldProvider world, int size, Vector3i pos) {
         if(size == 1) {
             if(isSolid(world.getBlock(pos))) {
                 return LeafNode.node;
             } else {
-                return null;
+                return EmptyNode.get(1);
             }
         } else {
             Node[] children = new Node[8];
-            boolean anyChildren = false;
+            boolean empty = true;
             int i=0;
             for(int cx=0; cx<2; cx++) {
                 for(int cy=0; cy<2; cy++) {
                     for(int cz=0; cz<2; cz++) {
                         children[i] = buildNode(world, size/2, new Vector3i(cx,cy,cz).scale(size/2).add(pos));
-                        if(children[i] != null) {
-                            anyChildren = true;
-                        }
+                        empty = empty && children[i] instanceof EmptyNode;
                         i++;
                     }
                 }
             }
-            if(anyChildren || size >= 32) { //TODO: after null nodes are replaced with AirNodes, this hacky workaround will be unnecessary.
-                return new InternalNode(size, children);
+            if(empty) {
+                return EmptyNode.get(size);
             } else {
-                return null;
+                return new InternalNode(size, children);
             }
-        }
-    }
-    
-    /**
-     * Produce a new node containing a single solid block at the specified position.
-     */
-    public static Node buildSingletonNode(int size, Vector3i pos) {
-        if(size == 1) {
-            return LeafNode.node;
-        } else {
-            Node[] children = new Node[8];
-            Node child = buildSingletonNode(size/2, modVector(pos, size/2));
-            children[octantOfPosition(pos, size)] = child;
-            return new InternalNode(size, children);
         }
     }
     
