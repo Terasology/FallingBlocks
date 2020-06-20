@@ -8,6 +8,7 @@ import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
 
 public class TreeUtils {
+    public static final int[] directions = new int[]{-4,-2,-1,1,2,4};
     // Does the block count as solid for the purposes of connectivity?
     // I'm avoiding inlining this because I'm not sure if it'll have to be changed at some point.
     public static boolean isSolid(Block block) {
@@ -15,7 +16,7 @@ public class TreeUtils {
     }
     
     /**
-     * Produce either a new node representing the given region.
+     * Produce a new node representing the given region.
      */
     public static Node buildNode(WorldProvider world, int size, Vector3i pos) {
         if(size == 1) {
@@ -97,6 +98,18 @@ public class TreeUtils {
         return (pos.x >= size/2 ? 4 : 0) + (pos.y >= size/2 ? 2 : 0) + (pos.z >= size/2 ? 1 : 0);
     }
     
+    public static boolean isPositionOnSide(Vector3i pos, int side, int size) {
+        switch(side) {
+            case -4 : return pos.x == 0;
+            case -2 : return pos.y == 0;
+            case -1 : return pos.z == 0;
+            case  1 : return pos.z == size - 1;
+            case  2 : return pos.y == size - 1;
+            case  4 : return pos.x == size - 1;
+            default : throw new IllegalArgumentException(side+" is not a valid side.");
+        }
+    }
+    
     public static boolean isPositionInternal(Vector3i pos, int size) {
         return (pos.x > 0) && (pos.y > 0) && (pos.z > 0)
                && (pos.x < size-1) && (pos.y < size-1) && (pos.z < size-1);
@@ -113,6 +126,12 @@ public class TreeUtils {
     public static void assrt(boolean valid) {
         if(!valid) {
             throw new AssertionError();
+        }
+    }
+    
+    public static void assrt(boolean valid, Object message) {
+        if(!valid) {
+            throw new AssertionError(message);
         }
     }
 }

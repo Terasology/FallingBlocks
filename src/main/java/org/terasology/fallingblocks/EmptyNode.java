@@ -52,11 +52,11 @@ public class EmptyNode extends Node {
     }
     
     @Override
-    public Pair<Node, Pair<Component, Set<Integer>>> addBlock(Vector3i pos) {
+    public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, Node node, Set<Pair<Integer, Node>> siblings) {
         if(size == 1) {
-            return new Pair(LeafNode.node, new Pair(null, new HashSet(Arrays.asList(-4,-2,-1,1,2,4))));
+            return new Pair(LeafNode.node, new Pair(null, null));
         } else {
-            return equivalentInternalNode().addBlock(pos);
+            return equivalentInternalNode().insertFullNode(pos, node, siblings);
         }
     }
     
@@ -66,14 +66,6 @@ public class EmptyNode extends Node {
     @Override
     public Set<Component> insertNewChunk(Node newNode, Vector3i pos) {
         throw new RuntimeException("Trying to add already loaded chunk.");
-    }
-    
-    /**
-     * Replace something else with an UnloadedNode.
-     */
-    @Override
-    public Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize) {
-        return equivalentInternalNode().removeChunk(pos, chunkSize);
     }
     
     private InternalNode equivalentInternalNode() {

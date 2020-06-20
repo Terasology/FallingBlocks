@@ -47,8 +47,8 @@ public class UnloadedNode extends Node {
     }
     
     @Override
-    public Pair<Node, Pair<Component, Set<Integer>>> addBlock(Vector3i pos) {
-        throw new RuntimeException("Trying to add a block to an unloaded node.");
+    public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, Node node, Set<Pair<Integer, Node>> siblings) {
+        throw new RuntimeException("Trying to insert something in an unloaded node.");
     }
     
     /**
@@ -57,13 +57,5 @@ public class UnloadedNode extends Node {
     @Override
     public Set<Component> insertNewChunk(Node newNode, Vector3i pos) {
         throw new RuntimeException("Trying to insert new chunk in an unloaded node. Node can't replace itself.");
-    }
-    
-    /**
-     * Replace something else with an UnloadedNode.
-     */
-    @Override
-    public Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize) {
-        throw new RuntimeException("Trying to unload an already unloaded chunk.");
     }
 }

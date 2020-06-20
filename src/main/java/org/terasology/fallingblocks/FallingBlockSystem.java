@@ -107,9 +107,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                     continue;
                 }
                 Vector3i pos = new Vector3i(worldPos).sub(rootNodePos);
-                Pair<Node, Pair<Component, Set<Integer>>> additionResult = rootNode.addBlock(pos);
+                Pair<Node, Component> additionResult = rootNode.addBlock(pos);
                 rootNode = additionResult.a;
-                updatedComponents.add(additionResult.b.a);
+                updatedComponents.add(additionResult.b);
             }
             for(Vector3i worldPos : oldRemovals) {
                 if(!worldProvider.isBlockRelevant(worldPos)) {
@@ -133,6 +133,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             Vector3i pos = new Vector3i(chunkPos).addY(y);
             logger.info("Loading chunk at "+pos+".");
             Node node = TreeUtils.buildNode(worldProvider, ROOT_NODE_SIZE, pos);
+            logger.info("Built. #Components = "+node.getComponents().size());
             if(rootNode == null) {
                 //logger.info("Starting new root node.");
                 rootNode = node;
@@ -148,6 +149,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             }
             if(rootNode != node) {
                 Set<Component> updatedComponents = rootNode.insertNewChunk(node, new Vector3i(pos).sub(rootNodePos));
+                logger.info("Inserted.");
                 for(Component component : updatedComponents) {
                     checkComponentDetached(component);
                 }
@@ -161,6 +163,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
+            logger.info("Unloading chunk at "+pos+".");
             rootNode = rootNode.removeChunk(pos.sub(rootNodePos), ROOT_NODE_SIZE).a;
             Pair<Integer, Node> shrinking = rootNode.canShrink();
             if(shrinking.a >= 0) {
@@ -169,6 +172,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 for(Component component : rootNode.getComponents()) {
                     component.parent.inactivate();
                     component.parent = null;
+                    component.touching.clear();
                 }
                 rootNodePos.add(TreeUtils.octantVector(shrinking.a, rootNode.size));
             } else if(shrinking.a == -1) {

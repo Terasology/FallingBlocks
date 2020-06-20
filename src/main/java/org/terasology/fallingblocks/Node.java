@@ -3,6 +3,7 @@
 
 package org.terasology.fallingblocks;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -24,10 +25,21 @@ public abstract class Node {
     
     public abstract Pair<Node, Set<Component>> removeBlock(Vector3i pos);
     
+    public Pair<Node, Component> addBlock(Vector3i pos) {
+        Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> result = insertFullNode(pos, LeafNode.node, new HashSet());
+        return new Pair(result.a, result.b.a);
+    }
+    
     /**
-     * Returns the component the new block ended up in, and which surfaces the new block is exposed to.
+     * Replace a node with one of the same size that is entirely solid (i.e. LeafNode
+     * or UnloadedNode).
+     * 
+     * @param pos      The position where the node is added, relative to this node.
+     * @param node     The node to add
+     * @param siblings The nodes adjacent to the new block, with the same size as this.
+     * @return The node to replace this with, the component containing the new block, and the adjacent components.
      */
-    public abstract Pair<Node, Pair<Component, Set<Integer>>> addBlock(Vector3i pos);
+    abstract Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, Node node, Set<Pair<Integer, Node>> siblings);
     
     /**
      * Replace an UnloadedNode with something else.
@@ -37,7 +49,10 @@ public abstract class Node {
     /**
      * Replace something else with an UnloadedNode.
      */
-    public abstract Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize);
+    public Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize) {
+        Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> result = insertFullNode(pos, new UnloadedNode(chunkSize), new HashSet());
+        return new Pair(result.a, result.b.a);
+    }
     
     /**
      * For debugging purposes: check that all the state is valid.

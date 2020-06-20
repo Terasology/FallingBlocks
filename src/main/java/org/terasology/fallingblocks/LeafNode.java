@@ -40,7 +40,7 @@ public class LeafNode extends Node {
     }
     
     @Override
-    public Pair<Node, Pair<Component, Set<Integer>>> addBlock(Vector3i pos) {
+    public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, Node node, Set<Pair<Integer, Node>> siblings) {
         throw new RuntimeException("Trying to add a block to a leaf node even though it should already have a block there.");
     }
     
@@ -50,13 +50,5 @@ public class LeafNode extends Node {
     @Override
     public Set<Component> insertNewChunk(Node newNode, Vector3i pos) {
         throw new RuntimeException("Trying to insert new chunk in a leaf node. Node can't replace itself.");
-    }
-    
-    /**
-     * Replace something else with an UnloadedNode.
-     */
-    @Override
-    public Pair<Node, Component> removeChunk(Vector3i pos, int chunkSize) {
-        throw new RuntimeException("Trying to unload a single leaf.");
     }
 }

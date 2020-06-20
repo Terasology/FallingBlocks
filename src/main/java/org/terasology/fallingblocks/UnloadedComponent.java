@@ -22,6 +22,11 @@ public class UnloadedComponent extends Component {
     }
     
     @Override
+    void deriveTouchingFromSubcomponents() {
+        // There are no subcomponents.
+    }
+    
+    @Override
     public void resetSupported() {
         supported = true;
     }
@@ -32,8 +37,18 @@ public class UnloadedComponent extends Component {
     }
     
     @Override
-    public boolean isTouching(Component sibling, int direction) {
+    public boolean baseIsTouching(Component sibling, int direction) {
         return sibling.isTouching(-direction);
+    }
+    
+    public boolean updateTouching(Component sibling, int direction) {
+        if(baseIsTouching(sibling, direction)) {
+            touching.add(new Pair(direction, sibling));
+            sibling.touching.add(new Pair(-direction, this));
+            return true;
+        } else {
+            return false;
+        }
     }
     
     /**
