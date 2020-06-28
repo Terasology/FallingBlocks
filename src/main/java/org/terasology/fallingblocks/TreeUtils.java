@@ -98,14 +98,18 @@ public class TreeUtils {
         return (pos.x >= size/2 ? 4 : 0) + (pos.y >= size/2 ? 2 : 0) + (pos.z >= size/2 ? 1 : 0);
     }
     
-    public static boolean isPositionOnSide(Vector3i pos, int side, int size) {
+    /**
+     * Does a cube of size `innerSize` at position `pos` inside a larger cube of size `size`
+     * touch side `side`?
+     */
+    public static boolean isPositionOnSide(Vector3i pos, int side, int innerSize, int size) {
         switch(side) {
             case -4 : return pos.x == 0;
             case -2 : return pos.y == 0;
             case -1 : return pos.z == 0;
-            case  1 : return pos.z == size - 1;
-            case  2 : return pos.y == size - 1;
-            case  4 : return pos.x == size - 1;
+            case  1 : return pos.z == size - innerSize;
+            case  2 : return pos.y == size - innerSize;
+            case  4 : return pos.x == size - innerSize;
             default : throw new IllegalArgumentException(side+" is not a valid side.");
         }
     }

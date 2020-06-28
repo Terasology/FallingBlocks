@@ -3,10 +3,7 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 
 import org.terasology.math.geom.Vector3i;
 
@@ -90,5 +87,30 @@ public class UnloadedComponent extends Component {
     
     public String toString() {
         return "UCmp "+node.size;
+    }
+    
+    @Override
+    public void validate(Stack<Integer> location) {
+        TreeUtils.assrt(active);
+        TreeUtils.assrt(node.getComponents().contains(this));
+        if(parent != null) {
+            int found = 0;
+            for(Pair<Integer, Component> subcomponent : parent.subcomponents) {
+                if(subcomponent.b == this) {
+                    found++;
+                }
+            }
+            TreeUtils.assrt(found >= 1);
+            TreeUtils.assrt(found <= 1);
+            TreeUtils.assrt(parent.node.size == node.size * 2);
+        }
+        TreeUtils.assrt(subcomponents == null);
+        TreeUtils.assrt(supported);
+        for(Pair<Integer, Component> t : touching) {
+            TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction "+t.a+" size "+node.size+" location "+location);
+            TreeUtils.assrt(t.b.isTouching(this, -t.a));
+            TreeUtils.assrt(node.size == t.b.node.size);
+            //TreeUtils.assrt(parent == t.b.parent || parent.isTouching(t.b.parent, t.a), "size = "+node.size+", direction = "+t.a);
+        }
     }
 }

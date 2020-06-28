@@ -3,11 +3,7 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,27 +27,41 @@ public class InternalNode extends Node {
         this.size = size;
         this.children = children;
         
-        components = new HashSet<>();
+        Set<Pair<Integer, Component>> subComponents = new HashSet();
         for(int i=0; i<8; i++) {
             for(Component c : children[i].getComponents()) {
-                components.add(new Component(i, c, this));
+                subComponents.add(new Pair(i, c));
             }
         }
         
-        // There are better ways of doing this, but this should suffice.
-        Set<Component> tempComponents = new HashSet(components);
-        for(Component c1 : tempComponents) {
-            boolean merging = true;
-            while(merging) {
-                merging = false;
-                for(Component c2 : tempComponents) {
-                    if(c1.isActive() && c2.isActive() && c1 != c2) {
-                        c1.updateTouching(c2, 0);
-                        if(c1.isTouching(c2, 0)) {
-                            c1.merge(c2);
-                            merging = true;
+        components = new HashSet();
+        
+        // DFS to construct the Components, and update the touching sets of the subcomponents at the same time. The search is arranged a little non-standardly in order to catch all the touching pairs.
+        Stack<Pair<Integer, Component>> stack = new Stack();
+        while(!subComponents.isEmpty()) {
+            Set<Pair<Integer, Component>> rawComponent = new HashSet();
+            Pair<Integer, Component> first = subComponents.iterator().next();
+            rawComponent.add(first);
+            stack.push(first);
+            while(!stack.isEmpty()) {
+                Pair<Integer, Component> current = stack.pop();
+                for(Pair<Integer, Component> next : subComponents) {
+                    int direction = TreeUtils.isAdjacent(current.a, next.a);
+                    if(direction != 0 && (size == 2 || current.b.updateTouching(next.b, direction))) {
+                        if(!rawComponent.contains(next)) {
+                            rawComponent.add(next);
+                            stack.push(next);
                         }
                     }
+                }
+            }
+            subComponents.removeAll(rawComponent);
+            
+            Component component = new Component(rawComponent, null, this);
+            components.add(component);
+            if(size > 2) {
+                for(Pair<Integer, Component> sc : rawComponent) {
+                    sc.b.parent = component;
                 }
             }
         }
@@ -99,13 +109,23 @@ public class InternalNode extends Node {
             if(node.getComponents().size() != 1) {
                 throw new IllegalArgumentException("insertFullNode may only be used with UnloadedNodes and LeafNodes.");
             }
-            for(Component component : components) {
-                if(component.parent != null) {
-                    component.parent.subcomponents.removeIf((Pair<Integer,Component> subcomponent) -> subcomponent.b == component);
-                }
-                component.inactivate();
-            }
             Component component = node.getComponents().iterator().next();
+            if(!components.isEmpty()) {
+                Component firstOldComponent = components.iterator().next();
+                Set<Component> tempComponents = new HashSet(components);
+                for(Component oldComponent : tempComponents) {
+                    if(oldComponent != firstOldComponent) {
+                        firstOldComponent.merge(oldComponent);
+                    }
+                }
+                if(firstOldComponent.parent != null) {
+                    firstOldComponent.parent.subcomponents.removeIf((Pair<Integer,Component> subcomponent) -> subcomponent.b == firstOldComponent);
+                    if(firstOldComponent.parent.subcomponents.isEmpty()) {
+                        firstOldComponent.parent.inactivate();
+                    }
+                }
+                firstOldComponent.inactivate();
+            }
             Set<Pair<Integer, Component>> nextTouching = new HashSet();
             for(Pair<Integer, Node> siblingPair : siblings) {
                 int direction = siblingPair.a;
@@ -121,26 +141,31 @@ public class InternalNode extends Node {
         
         int octant = TreeUtils.octantOfPosition(pos, size);
         Vector3i subPosition = TreeUtils.modVector(pos, size/2);
-        //logger.info("Adding block, node size = "+size+", block in octant "+octant+" with position "+pos+" and subPosition "+subPosition+".");
+        //logger.info("Inserting node of size "+node.size+", this node size = "+size+", block in octant "+octant+" with position "+pos+" and subPosition "+subPosition+".");
         Set<Pair<Integer, Node>> nextSiblings = new HashSet();
         for(int i=0; i<TreeUtils.directions.length; i++) {
             int side = TreeUtils.directions[i];
             //logger.info("Trying new sibling on side "+side);
-            if(TreeUtils.isOctantOnSide(octant, -side) && TreeUtils.isPositionOnSide(subPosition, side, size/2) && !(children[octant+side] instanceof EmptyNode)) {
-                //logger.info("New sibling added.");
-                nextSiblings.add(new Pair(side, children[octant+side]));
+            if(TreeUtils.isOctantOnSide(octant, -side) && TreeUtils.isPositionOnSide(subPosition, side, node.size, size/2)) {
+                //logger.info("Correct position.");
+                if(!(children[octant+side] instanceof EmptyNode)) {
+                    //logger.info("New sibling  on side "+side+", "+children[octant+side].getClass());
+                    nextSiblings.add(new Pair(side, children[octant+side]));
+                }
             }
         }
         for(Pair<Integer, Node> siblingPair : siblings) {
             int side = siblingPair.a;
             Node sibling = siblingPair.b;
             TreeUtils.assrt(sibling.size == size);
-            //logger.info("Existing sibling on side "+side+", "+sibling.getClass());
             if(sibling != null && sibling instanceof InternalNode) {
                 Node child = ((InternalNode)sibling).children[octant-side];
+                //logger.info("Existing sibling on side "+side+", "+child.getClass());
                 if(!(child instanceof EmptyNode)) {
                     nextSiblings.add(new Pair(side, child));
                 }
+            } else if(sibling instanceof UnloadedNode) {
+                TreeUtils.assrt(((UnloadedNode)sibling).getComponent().isActive());
             }
         }
         
@@ -172,8 +197,6 @@ public class InternalNode extends Node {
                     if(parentComponent.baseIsTouching(siblingComponent, side)) {
                         //logger.info("touching");
                         nextTouching.add(new Pair(side, siblingComponent));
-                        parentComponent.touching.add(new Pair(side, siblingComponent));
-                        siblingComponent.touching.add(new Pair(-side, parentComponent));
                     }
                 }
             }
@@ -189,27 +212,61 @@ public class InternalNode extends Node {
                 }
             }
         } else {
+            //logger.info("Back to size "+size);
             for(Pair<Integer, Node> sibling : siblings) {
                 if(sibling.b instanceof UnloadedNode) {
                     nextTouching.add(new Pair(sibling.a, ((UnloadedNode)sibling.b).getComponent()));
                 }
             }
             for(Pair<Integer, Component> t : touching) {
-                TreeUtils.assrt(t.b.parent != null); //If this is the root node, touching is already empty.
-                if(t.b.parent == parentComponent) {
+                Component touchingComponent = t.b.parent;
+                TreeUtils.assrt(touchingComponent != null); //If this is the root node, touching is already empty.
+                if(touchingComponent == parentComponent) {
+                    //logger.info("touching on side "+t.a+" superfluous.");
                     continue;
-                } else if(t.b.parent.node == this) {
-                    t.b.parent.merge(parentComponent);
-                    parentComponent = t.b.parent;
+                } else if(touchingComponent.node == this) {
+                    //logger.info("touching on side "+t.a+" needs merging.");
+                    touchingComponent.merge(parentComponent);
+                    parentComponent = touchingComponent;
                 } else {
-                    parentComponent.touching.add(new Pair( t.a, t.b.parent));
-                    t.b.parent.touching.add(new Pair(-t.a, parentComponent));
-                    nextTouching.add(new Pair(t.a, t.b.parent));
+                    //logger.info("touching on side "+t.a+" needs recording, carrying up.");
+                    nextTouching.add(new Pair(t.a, touchingComponent));
                 }
             }
+            //logger.info("After merging down, "+components.size()+" components left.");
+        }
+        for(Pair<Integer, Component> t : nextTouching) {
+            TreeUtils.assrt(parentComponent.baseIsTouching(t.b, t.a));
+            TreeUtils.assrt(t.b.baseIsTouching(parentComponent,-t.a));
+            parentComponent.touching.add(t);
+            t.b.touching.add(new Pair(-t.a, parentComponent));
         }
         if(canShrink().a == -1) {
-            return insertFullNode(pos, new UnloadedNode(size), siblings);
+            //logger.info("Replacing with UnloadedNode. size "+size);
+            UnloadedNode replacement = new UnloadedNode(size);
+            Component oldComponent = components.iterator().next();
+            Component replacementComponent = replacement.getComponent();
+            for(int i=0; i<8; i++) {
+                ((UnloadedNode)children[i]).getComponent().inactivate();
+            }
+            if(oldComponent.parent != null) {
+                for(Pair<Integer, Component> subcomponent : oldComponent.parent.subcomponents) {
+                    if(subcomponent.b == oldComponent) {
+                        oldComponent.parent.subcomponents.remove(subcomponent);
+                        oldComponent.parent.subcomponents.add(new Pair(subcomponent.a, replacementComponent));
+                        break;
+                    }
+                }
+            }
+            replacementComponent.parent = oldComponent.parent;
+            replacementComponent.touching.addAll(oldComponent.touching);
+            for(Pair<Integer, Component> t : replacementComponent.touching) {
+                TreeUtils.assrt(t.b.touching.contains(new Pair(-t.a, oldComponent)));
+                t.b.touching.remove(new Pair(-t.a, oldComponent));
+                t.b.touching.add(new Pair(-t.a, replacementComponent));
+            }
+            oldComponent.inactivate();
+            return new Pair(replacement, new Pair(replacementComponent, nextTouching));
         }
         return new Pair(this, new Pair(parentComponent, nextTouching));
     }
@@ -267,7 +324,7 @@ public class InternalNode extends Node {
     }
     
     @Override
-    public void validate() {
+    public void validate(Stack<Integer> location) {
         for(int i=0; i<8; i++) {
             TreeUtils.assrt(children[i].size == size/2);
             for(Component component : children[i].getComponents()) {
@@ -285,10 +342,12 @@ public class InternalNode extends Node {
                 }
             }
             TreeUtils.assrt((size == 2) || ! (children[i] instanceof LeafNode));
-            children[i].validate();
+            location.push(i);
+            children[i].validate(location);
+            location.pop();
         }
         for(Component component : components) {
-            component.validate();
+            component.validate(location);
             TreeUtils.assrt(component.node == this);
             for(Component otherComponent : components) {
                 TreeUtils.assrt(component == otherComponent || !component.isTouching(otherComponent, 0));

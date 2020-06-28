@@ -3,10 +3,7 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import org.terasology.math.geom.Vector3i;
 
@@ -57,5 +54,13 @@ public class UnloadedNode extends Node {
     @Override
     public Set<Component> insertNewChunk(Node newNode, Vector3i pos) {
         throw new RuntimeException("Trying to insert new chunk in an unloaded node. Node can't replace itself.");
+    }
+    
+    public void validate(Stack<Integer> location) {
+        component.validate(location);
+        TreeUtils.assrt(components.contains(component));
+        TreeUtils.assrt(components.size() == 1);
+        TreeUtils.assrt(component != null);
+        TreeUtils.assrt(component instanceof UnloadedComponent);
     }
 }

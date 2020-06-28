@@ -3,11 +3,7 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,9 +127,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
-            logger.info("Loading chunk at "+pos+".");
+            //logger.info("Loading chunk at "+pos+".");
             Node node = TreeUtils.buildNode(worldProvider, ROOT_NODE_SIZE, pos);
-            logger.info("Built. #Components = "+node.getComponents().size());
+            //logger.info("Built. #Components = "+node.getComponents().size());
             if(rootNode == null) {
                 //logger.info("Starting new root node.");
                 rootNode = node;
@@ -149,7 +145,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             }
             if(rootNode != node) {
                 Set<Component> updatedComponents = rootNode.insertNewChunk(node, new Vector3i(pos).sub(rootNodePos));
-                logger.info("Inserted.");
+                //logger.info("Inserted.");
                 for(Component component : updatedComponents) {
                     checkComponentDetached(component);
                 }
@@ -163,15 +159,17 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
-            logger.info("Unloading chunk at "+pos+".");
+            //logger.info("Unloading chunk at "+pos+".");
             rootNode = rootNode.removeChunk(pos.sub(rootNodePos), ROOT_NODE_SIZE).a;
             Pair<Integer, Node> shrinking = rootNode.canShrink();
             if(shrinking.a >= 0) {
                 //logger.info("Shrinking root node to octant "+shrinking.a+", size "+shrinking.b.size+".");
                 rootNode = shrinking.b;
                 for(Component component : rootNode.getComponents()) {
-                    component.parent.inactivate();
+                    TreeUtils.assrt(!(component.parent instanceof UnloadedComponent));
+                    Component parent = component.parent;
                     component.parent = null;
+                    parent.inactivate(); // It has to be done in this order so as to not also inactivate the component itself.
                     component.touching.clear();
                 }
                 rootNodePos.add(TreeUtils.octantVector(shrinking.a, rootNode.size));

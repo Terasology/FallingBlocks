@@ -3,9 +3,7 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import org.terasology.math.geom.Vector3i;
 
@@ -58,5 +56,9 @@ public abstract class Node {
      * For debugging purposes: check that all the state is valid.
      */
     public void validate() {
+        validate(new Stack());
+    }
+    
+    public void validate(Stack<Integer> location) {
     }
 }

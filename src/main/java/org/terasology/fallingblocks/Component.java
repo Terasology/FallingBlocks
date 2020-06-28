@@ -3,10 +3,7 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.Stack;
+import java.util.*;
 
 import org.terasology.math.geom.Vector3i;
 
@@ -63,7 +60,8 @@ public class Component {
                 int side = childTouching.a;
                 Component newTouching = childTouching.b.parent;
                 if(newTouching != null && TreeUtils.isOctantOnSide(octant, side)) {
-                    touching.add(new Pair(side, newTouching));
+                    this.touching.add(new Pair( side, newTouching));
+                    newTouching.touching.add(new Pair(-side, this));
                 }
             }
         }
@@ -74,7 +72,9 @@ public class Component {
     }
     
     public void merge(Component sibling) {
-        TreeUtils.assrt(active && sibling.isActive() && (sibling.parent == null || sibling.parent.isActive()));
+        TreeUtils.assrt(active);
+        TreeUtils.assrt(sibling.isActive());
+        TreeUtils.assrt(sibling.parent == null || sibling.parent.isActive());
         TreeUtils.assrt(sibling != this);
         TreeUtils.assrt(sibling.node == node);
         subcomponents.addAll(sibling.subcomponents);
@@ -162,9 +162,6 @@ public class Component {
         if(result && direction != 0) {
             touching.add(new Pair(direction, sibling));
             sibling.touching.add(new Pair(-direction, this));
-        }
-        if(baseIsTouching(sibling, direction)) {
-            TreeUtils.assrt(isTouching(sibling, direction), "size = "+node.size);
         }
         return result;
     }
@@ -329,7 +326,7 @@ public class Component {
         return result+"]";
     }
     
-    public void validate() {
+    public void validate(Stack<Integer> location) {
         TreeUtils.assrt(node.getComponents().contains(this));
         TreeUtils.assrt(active);
         if(parent != null) {
@@ -341,6 +338,7 @@ public class Component {
             }
             TreeUtils.assrt(found >= 1);
             TreeUtils.assrt(found <= 1);
+            TreeUtils.assrt(parent.node.size == node.size * 2);
         }
         for(Pair<Integer, Component> subcomponent : subcomponents) {
             if(node.size == 2) {
@@ -357,7 +355,7 @@ public class Component {
         TreeUtils.assrt(prevSupported == supported);
         // Checking that the subcomponents actually do all touch would be good, but also complicated.
         for(Pair<Integer, Component> t : touching) {
-            TreeUtils.assrt(baseIsTouching(t.b, t.a));
+            TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction "+t.a+" size "+node.size+" location "+location);
             TreeUtils.assrt(t.b.isTouching(this, -t.a));
             TreeUtils.assrt(node.size == t.b.node.size);
             //TreeUtils.assrt(parent == t.b.parent || parent.isTouching(t.b.parent, t.a), "size = "+node.size+", direction = "+t.a);
