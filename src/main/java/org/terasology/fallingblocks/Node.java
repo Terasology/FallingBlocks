@@ -24,12 +24,12 @@ public abstract class Node {
     public abstract Pair<Node, Set<Component>> removeBlock(Vector3i pos);
     
     public Pair<Node, Component> addBlock(Vector3i pos) {
-        Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> result = insertFullNode(pos, LeafNode.node, new HashSet());
+        Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> result = insertFullNode(pos, SolidNode.get(1), new HashSet());
         return new Pair(result.a, result.b.a);
     }
     
     /**
-     * Replace a node with one of the same size that is entirely solid (i.e. LeafNode
+     * Replace a node with one of the same size that is entirely solid (i.e. SolidNode
      * or UnloadedNode).
      * 
      * @param pos      The position where the node is added, relative to this node.
@@ -37,7 +37,7 @@ public abstract class Node {
      * @param siblings The nodes adjacent to the new block, with the same size as this.
      * @return The node to replace this with, the component containing the new block, and the adjacent components.
      */
-    abstract Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, Node node, Set<Pair<Integer, Node>> siblings);
+    abstract Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, FullNode node, Set<Pair<Integer, Node>> siblings);
     
     /**
      * Replace an UnloadedNode with something else.

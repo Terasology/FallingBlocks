@@ -8,14 +8,14 @@ import java.util.*;
 import org.terasology.math.geom.Vector3i;
 
 /**
- * The connected component within an UnloadedNode, filling its space.
+ * The connected component within a FullNode, filling its space.
  */
-public class UnloadedComponent extends Component {
+public class FullComponent extends Component {
     // subcomponents it not used, so it is left as null. I suspect there's some better way to arrange the classes, perhaps with a common abstract superclass like Node, that avoids having superfluous class members.
     
-    public UnloadedComponent(UnloadedNode node) {
+    public FullComponent(FullNode node, boolean supported) {
         super(null, null, node);
-        supported = true;
+        this.supported = supported;
     }
     
     @Override
@@ -30,7 +30,7 @@ public class UnloadedComponent extends Component {
     
     @Override
     public void merge(Component sibling) {
-        throw new UnsupportedOperationException("UnloadedComponents are always the only component in their node, therefore there is nothing it would be valid for them to merge with.");
+        throw new UnsupportedOperationException("FullComponents are always the only component in their node, therefore there is nothing it would be valid for them to merge with.");
     }
     
     @Override
@@ -57,8 +57,14 @@ public class UnloadedComponent extends Component {
      */
     @Override
     public Set<Component> checkConnectivity() {
-        // An UnloadedNode can't be the root node therefore this must have a parent. Also, it can't be disconnected.
-        return parent.checkConnectivity();
+        // This can't actually be disconnected, so just return the result without modifying anything.
+        if(parent == null) {
+            Set<Component> result = new HashSet();
+            result.add(this);
+            return result;
+        } else {
+            return parent.checkConnectivity();
+        }
     }
     
     @Override
@@ -71,7 +77,6 @@ public class UnloadedComponent extends Component {
         return true;
     }
     
-    // I don't think this overridden version of getPositions will actually be used, but it seems pretty harmless.
     @Override
     public Set<Vector3i> getPositions(Vector3i pos) {
         Set<Vector3i> result = new HashSet();
@@ -86,7 +91,7 @@ public class UnloadedComponent extends Component {
     }
     
     public String toString() {
-        return "UCmp "+node.size;
+        return "FCmp "+node.size;
     }
     
     @Override
@@ -105,7 +110,11 @@ public class UnloadedComponent extends Component {
             TreeUtils.assrt(parent.node.size == node.size * 2);
         }
         TreeUtils.assrt(subcomponents == null);
-        TreeUtils.assrt(supported);
+        if(supported) {
+            TreeUtils.assrt(node instanceof UnloadedNode);
+        } else {
+            TreeUtils.assrt(node instanceof SolidNode);
+        }
         for(Pair<Integer, Component> t : touching) {
             TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction "+t.a+" size "+node.size+" location "+location);
             TreeUtils.assrt(t.b.isTouching(this, -t.a));

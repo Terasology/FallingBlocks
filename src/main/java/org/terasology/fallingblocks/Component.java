@@ -17,7 +17,7 @@ public class Component {
     public Set<Pair<Integer, Component>> touching;
     public Component parent;
     public final Node node;
-    public boolean supported; //Does this component contain any UnloadedComponents (which are assumed to be supported)?
+    public boolean supported; //Does this component contain any unloaded Components (which are assumed to be supported)?
     boolean active = true; //Is this component currently part of the overall octree structure?
     
     public Component(int childIndex, Component childComponent, InternalNode node) {
@@ -44,9 +44,8 @@ public class Component {
     /**
      * Adds those components that it can be derived that ke'a touches this from
      * the subcomponents. This may miss some, in the cases that the subcomponents
-     * are null (leaves, size=1), or this is touching a component that doesn't
-     * have subcomponents (like an UnloadedComponent, or larger solid leaf components
-     * if I ever get around to adding those).
+     * are null (leaves, size=1), or this is touching a FullComponent, which doesn't
+     * have subcomponents.
      */
     void deriveTouchingFromSubcomponents() {
         for(Pair<Integer, Component> subcomponent : subcomponents) {
@@ -82,7 +81,6 @@ public class Component {
         for(Pair<Integer, Component> t : sibling.touching) {
             t.b.touching.add(new Pair(-t.a, this));
         }
-        supported = supported || sibling.supported;
         for(Pair<Integer, Component> newSubcomponent : sibling.subcomponents) {
             if(newSubcomponent.b != null) {
                 newSubcomponent.b.parent = this;
@@ -102,7 +100,47 @@ public class Component {
         } else if(sibling.parent != parent && sibling.parent != null) {
             parent.merge(sibling.parent);
         }
-        sibling.inactivate();
+        if(supported != sibling.supported && parent != null) {
+            for(Component ancestor = this; ancestor.parent != null; ancestor = ancestor.parent) {
+                ancestor.supported = true;
+            }
+        }
+        supported = supported || sibling.supported;
+        sibling.inactivate(false);
+    }
+    
+    public void replaceWith(Component replacement) {
+        if(subcomponents != null) {
+            for(Pair<Integer, Component> sc : subcomponents) {
+                sc.b.parent = replacement;
+                if(replacement.subcomponents != null) {
+                    replacement.subcomponents.add(sc);
+                }
+            }
+        }
+        for(Pair<Integer, Component> t : touching) {
+            t.b.touching.remove(new Pair(-t.a, this));
+            if(replacement.baseIsTouching(t.b, t.a)) {
+                t.b.touching.add(new Pair(-t.a, replacement));
+                replacement.touching.add(t);
+            }
+        }
+        if(parent != null) {
+            for(Pair<Integer, Component> sc : parent.subcomponents) {
+                if(sc.b == this) {
+                    parent.subcomponents.remove(sc);
+                    parent.subcomponents.add(new Pair(sc.a, replacement));
+                    break;
+                }
+            }
+            if(replacement.supported != supported) {
+                for(Component ancestor = this; ancestor.parent != null; ancestor = ancestor.parent) {
+                    ancestor.parent.resetSupported();
+                }
+            }
+        }
+        replacement.parent = parent;
+        active = false;
     }
     
     /**
@@ -110,7 +148,7 @@ public class Component {
      * getting the result from the cached set (this.touching).
      */
     public boolean baseIsTouching(Component sibling, int direction) {
-        if(sibling instanceof UnloadedComponent) {
+        if(sibling instanceof FullComponent) {
             return sibling.baseIsTouching(this, -direction);
         }
         for(Pair<Integer, Component> subcomponent1 : subcomponents) {
@@ -139,7 +177,7 @@ public class Component {
     }
     
     public boolean updateTouching(Component sibling, int direction) {
-        if(sibling instanceof UnloadedComponent) {
+        if(sibling instanceof FullComponent) {
             return sibling.updateTouching(this, -direction);
         }
         boolean result = false;
@@ -233,7 +271,7 @@ public class Component {
         }
         if(result.size() != 1) {
             TreeUtils.assrt(!result.contains(this));
-            inactivate();
+            inactivate(false);
             node.getComponents().addAll(result);
         } else {
             resetSupported();
@@ -289,7 +327,7 @@ public class Component {
         return result;
     }
     
-    public void inactivate() {
+    public void inactivate(boolean removeAncestors) {
         node.getComponents().remove(this);
         for(Pair<Integer, Component> t : touching) {
             t.b.touching.remove(new Pair(-t.a, this));
@@ -297,8 +335,14 @@ public class Component {
         if(subcomponents != null) {
             for(Pair<Integer, Component> sc : subcomponents) {
                 if(sc.b != null && sc.b.parent == this && sc.b.isActive()) {
-                    sc.b.inactivate();
+                    sc.b.inactivate(false);
                 }
+            }
+        }
+        if(removeAncestors && parent != null) {
+            parent.subcomponents.removeIf((Pair<Integer, Component> sc) -> sc.b == this);
+            if(parent.subcomponents.isEmpty()) {
+                parent.inactivate(true);
             }
         }
         active = false;
@@ -340,6 +384,7 @@ public class Component {
             TreeUtils.assrt(found <= 1);
             TreeUtils.assrt(parent.node.size == node.size * 2);
         }
+        TreeUtils.assrt(!subcomponents.isEmpty());
         for(Pair<Integer, Component> subcomponent : subcomponents) {
             if(node.size == 2) {
                 TreeUtils.assrt(subcomponent.b == null);
@@ -352,7 +397,8 @@ public class Component {
         }
         boolean prevSupported = supported;
         resetSupported();
-        TreeUtils.assrt(prevSupported == supported);
+        TreeUtils.assrt(prevSupported || !supported, "size "+node.size);
+        TreeUtils.assrt(!prevSupported || supported, "size "+node.size);
         // Checking that the subcomponents actually do all touch would be good, but also complicated.
         for(Pair<Integer, Component> t : touching) {
             TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction "+t.a+" size "+node.size+" location "+location);
@@ -374,7 +420,6 @@ public class Component {
             TreeUtils.assrt(component1.isTouching(component2, direction), "size = "+component1.node.size+" direction = "+direction);
         }
         
-        // Leaf (e.g. Unloaded) components
         if(component1.subcomponents == null || component2.subcomponents == null) {
             return;
         }

@@ -18,14 +18,12 @@ import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
 import org.terasology.input.cameraTarget.CameraTargetSystem;
 import org.terasology.logic.console.commandSystem.annotations.Command;
-import org.terasology.logic.console.commandSystem.annotations.CommandParam;
 import org.terasology.logic.health.DestroyEvent;
 import org.terasology.math.geom.Vector3i;
 import org.terasology.registry.In;
 import org.terasology.world.BlockEntityRegistry;
 import org.terasology.world.OnChangedBlock;
 import org.terasology.world.WorldProvider;
-import org.terasology.world.block.Block;
 import org.terasology.world.chunks.ChunkConstants;
 import org.terasology.world.chunks.event.OnChunkLoaded;
 import org.terasology.world.chunks.event.BeforeChunkUnload;
@@ -166,10 +164,10 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 //logger.info("Shrinking root node to octant "+shrinking.a+", size "+shrinking.b.size+".");
                 rootNode = shrinking.b;
                 for(Component component : rootNode.getComponents()) {
-                    TreeUtils.assrt(!(component.parent instanceof UnloadedComponent));
+                    TreeUtils.assrt(!(component.parent instanceof FullComponent));
                     Component parent = component.parent;
                     component.parent = null;
-                    parent.inactivate(); // It has to be done in this order so as to not also inactivate the component itself.
+                    parent.inactivate(false); // It has to be done in this order so as to not also inactivate the component itself.
                     component.touching.clear();
                 }
                 rootNodePos.add(TreeUtils.octantVector(shrinking.a, rootNode.size));

@@ -21,25 +21,29 @@ public class TreeUtils {
     public static Node buildNode(WorldProvider world, int size, Vector3i pos) {
         if(size == 1) {
             if(isSolid(world.getBlock(pos))) {
-                return LeafNode.node;
+                return SolidNode.get(1);
             } else {
                 return EmptyNode.get(1);
             }
         } else {
             Node[] children = new Node[8];
             boolean empty = true;
+            boolean solid = true;
             int i=0;
             for(int cx=0; cx<2; cx++) {
                 for(int cy=0; cy<2; cy++) {
                     for(int cz=0; cz<2; cz++) {
                         children[i] = buildNode(world, size/2, new Vector3i(cx,cy,cz).scale(size/2).add(pos));
                         empty = empty && children[i] instanceof EmptyNode;
+                        solid = solid && children[i] instanceof SolidNode;
                         i++;
                     }
                 }
             }
             if(empty) {
                 return EmptyNode.get(size);
+            } else if(solid) {
+                return SolidNode.get(size);
             } else {
                 return new InternalNode(size, children);
             }

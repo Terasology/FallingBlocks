@@ -85,7 +85,7 @@ public class InternalNode extends Node {
                     if(subcomponent.a == octant) { // This will be satisfied exactly once.
                         component.subcomponents.remove(subcomponent);
                         splitComponents = component.checkConnectivity();
-                        //component.supported must already be false, because all UnloadedComponents have size at least 32, so that doesn't need to be updated.
+                        //component.supported must already be false, because all unloaded Components have size at least 32, so that doesn't need to be updated.
                         break outer;
                     }
                 }
@@ -104,12 +104,10 @@ public class InternalNode extends Node {
      * @return The node to replace this with, the component containing the new block, and the adjacent components.
      */
     @Override
-    public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, Node node, Set<Pair<Integer, Node>> siblings) {
+    public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, FullNode node, Set<Pair<Integer, Node>> siblings) {
         if(size == node.size) {
-            if(node.getComponents().size() != 1) {
-                throw new IllegalArgumentException("insertFullNode may only be used with UnloadedNodes and LeafNodes.");
-            }
-            Component component = node.getComponents().iterator().next();
+            //logger.info("Replacing InternalNode, size "+size);
+            Component component = node.getComponent();
             if(!components.isEmpty()) {
                 Component firstOldComponent = components.iterator().next();
                 Set<Component> tempComponents = new HashSet(components);
@@ -118,13 +116,7 @@ public class InternalNode extends Node {
                         firstOldComponent.merge(oldComponent);
                     }
                 }
-                if(firstOldComponent.parent != null) {
-                    firstOldComponent.parent.subcomponents.removeIf((Pair<Integer,Component> subcomponent) -> subcomponent.b == firstOldComponent);
-                    if(firstOldComponent.parent.subcomponents.isEmpty()) {
-                        firstOldComponent.parent.inactivate();
-                    }
-                }
-                firstOldComponent.inactivate();
+                firstOldComponent.inactivate(true);
             }
             Set<Pair<Integer, Component>> nextTouching = new HashSet();
             for(Pair<Integer, Node> siblingPair : siblings) {
@@ -164,8 +156,6 @@ public class InternalNode extends Node {
                 if(!(child instanceof EmptyNode)) {
                     nextSiblings.add(new Pair(side, child));
                 }
-            } else if(sibling instanceof UnloadedNode) {
-                TreeUtils.assrt(((UnloadedNode)sibling).getComponent().isActive());
             }
         }
         
@@ -214,8 +204,8 @@ public class InternalNode extends Node {
         } else {
             //logger.info("Back to size "+size);
             for(Pair<Integer, Node> sibling : siblings) {
-                if(sibling.b instanceof UnloadedNode) {
-                    nextTouching.add(new Pair(sibling.a, ((UnloadedNode)sibling.b).getComponent()));
+                if(sibling.b instanceof FullNode) {
+                    nextTouching.add(new Pair(sibling.a, ((FullNode)sibling.b).getComponent()));
                 }
             }
             for(Pair<Integer, Component> t : touching) {
@@ -240,14 +230,24 @@ public class InternalNode extends Node {
             TreeUtils.assrt(t.b.baseIsTouching(parentComponent,-t.a));
             parentComponent.touching.add(t);
             t.b.touching.add(new Pair(-t.a, parentComponent));
+            //logger.info("Recording touch, side "+t.a);
         }
-        if(canShrink().a == -1) {
-            //logger.info("Replacing with UnloadedNode. size "+size);
-            UnloadedNode replacement = new UnloadedNode(size);
+        boolean uniformClass = true;
+        for(int i=1; i<8; i++) {
+            if(children[i].getClass() != children[0].getClass()) {
+                uniformClass = false;
+            }
+        }
+        if(uniformClass && (children[0] instanceof FullNode)) {
+            //logger.info("Replacing with "+children[0].getClass()+". size "+size);
+            FullNode replacement = node.getSimilar(size);
             Component oldComponent = components.iterator().next();
+            TreeUtils.assrt(oldComponent == parentComponent);
             Component replacementComponent = replacement.getComponent();
-            for(int i=0; i<8; i++) {
-                ((UnloadedNode)children[i]).getComponent().inactivate();
+            if(size > 2) {
+                for(int i=0; i<8; i++) {
+                    ((FullNode)children[i]).getComponent().inactivate(false);
+                }
             }
             if(oldComponent.parent != null) {
                 for(Pair<Integer, Component> subcomponent : oldComponent.parent.subcomponents) {
@@ -261,11 +261,12 @@ public class InternalNode extends Node {
             replacementComponent.parent = oldComponent.parent;
             replacementComponent.touching.addAll(oldComponent.touching);
             for(Pair<Integer, Component> t : replacementComponent.touching) {
+                //logger.info("Updating touching on side "+t.a+" to replacement component.");
                 TreeUtils.assrt(t.b.touching.contains(new Pair(-t.a, oldComponent)));
                 t.b.touching.remove(new Pair(-t.a, oldComponent));
                 t.b.touching.add(new Pair(-t.a, replacementComponent));
             }
-            oldComponent.inactivate();
+            oldComponent.inactivate(false);
             return new Pair(replacement, new Pair(replacementComponent, nextTouching));
         }
         return new Pair(this, new Pair(parentComponent, nextTouching));
@@ -276,19 +277,20 @@ public class InternalNode extends Node {
      */
     @Override
     public Pair<Integer, Node> canShrink() {
-        Pair<Integer, Node> result = new Pair(-1, null);
+        int resultIndex = -1;
+        Node resultNode = null;
         for(int i=0; i<8; i++) {
             if(!(children[i] instanceof UnloadedNode)) {
-                if(result.a == -1) {
-                    result.a = i;
-                    result.b = children[i];
+                if(resultIndex == -1) {
+                    resultIndex = i;
+                    resultNode = children[i];
                 } else {
-                    result.a = -2;
-                    result.b = null;
+                    resultIndex = -2;
+                    resultNode = null;
                 }
             }
         }
-        return result;
+        return new Pair(resultIndex, resultNode);
     }
     
     /**
@@ -316,7 +318,7 @@ public class InternalNode extends Node {
                     childComponent.updateTouching(t.b, t.a);
                 }
             }
-            component.inactivate();
+            component.inactivate(false);
             return component.parent.checkConnectivity();
         } else {
             return oldChild.insertNewChunk(newNode, TreeUtils.modVector(pos, size/2));
@@ -341,7 +343,6 @@ public class InternalNode extends Node {
                     }
                 }
             }
-            TreeUtils.assrt((size == 2) || ! (children[i] instanceof LeafNode));
             location.push(i);
             children[i].validate(location);
             location.pop();
