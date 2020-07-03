@@ -5,22 +5,25 @@ package org.terasology.fallingblocks;
 
 import java.util.*;
 
+import org.terasology.fallingblocks.node.FullNode;
+import org.terasology.fallingblocks.node.SolidNode;
+import org.terasology.fallingblocks.node.UnloadedNode;
 import org.terasology.math.geom.Vector3i;
 
 /**
  * The connected component within a FullNode, filling its space.
  */
-public class FullComponent extends Component {
-    // subcomponents it not used, so it is left as null. I suspect there's some better way to arrange the classes, perhaps with a common abstract superclass like Node, that avoids having superfluous class members.
+public class FullChain extends Chain {
+    // subchains it not used, so it is left as null. I suspect there's some better way to arrange the classes, perhaps with a common abstract superclass like Node, that avoids having superfluous class members.
     
-    public FullComponent(FullNode node, boolean supported) {
+    public FullChain(FullNode node, boolean supported) {
         super(null, null, node);
         this.supported = supported;
     }
     
     @Override
-    void deriveTouchingFromSubcomponents() {
-        // There are no subcomponents.
+    void deriveTouchingFromSubchains() {
+        // There are no subchains.
     }
     
     @Override
@@ -29,17 +32,17 @@ public class FullComponent extends Component {
     }
     
     @Override
-    public void merge(Component sibling) {
-        throw new UnsupportedOperationException("FullComponents are always the only component in their node, therefore there is nothing it would be valid for them to merge with.");
+    public void merge(Chain sibling) {
+        throw new UnsupportedOperationException("FullChains are always the only chain in their node, therefore there is nothing it would be valid for them to merge with.");
     }
     
     @Override
-    public boolean baseIsTouching(Component sibling, int direction) {
+    public boolean baseIsTouching(Chain sibling, int direction) {
         return sibling.isTouching(-direction);
     }
     
-    public boolean updateTouching(Component sibling, int direction) {
-        if(baseIsTouching(sibling, direction)) {
+    public boolean updateTouching(Chain sibling, int direction) {
+        if (baseIsTouching(sibling, direction)) {
             touching.add(new Pair(direction, sibling));
             sibling.touching.add(new Pair(-direction, this));
             return true;
@@ -49,17 +52,17 @@ public class FullComponent extends Component {
     }
     
     /**
-     * Tests whether the subcomponents are actually touching, and updates the node and
-     * parent component with the new components this splits into, recursively splitting
+     * Tests whether the subchains are actually touching, and updates the node and
+     * parent chain with the new chains this splits into, recursively splitting
      * the parent as well if necessary.
      *
-     * Returns the top-level components (i.e. most distant ancestor) resulting from this split.
+     * Returns the top-level chains (i.e. most distant ancestor) resulting from this split.
      */
     @Override
-    public Set<Component> checkConnectivity() {
+    public Set<Chain> checkConnectivity() {
         // This can't actually be disconnected, so just return the result without modifying anything.
-        if(parent == null) {
-            Set<Component> result = new HashSet();
+        if (parent == null) {
+            Set<Chain> result = new HashSet<>();
             result.add(this);
             return result;
         } else {
@@ -79,11 +82,11 @@ public class FullComponent extends Component {
     
     @Override
     public Set<Vector3i> getPositions(Vector3i pos) {
-        Set<Vector3i> result = new HashSet();
-        for(int x=0; x<node.size; x++) {
-            for(int y=0; y<node.size; y++) {
-                for(int z=0; z<node.size; z++) {
-                    result.add(new Vector3i(pos).add(x,y,z));
+        Set<Vector3i> result = new HashSet<>();
+        for (int x = 0; x < node.size; x++) {
+            for (int y = 0; y < node.size; y++) {
+                for (int z = 0; z < node.size; z++) {
+                    result.add(new Vector3i(pos).add(x, y, z));
                 }
             }
         }
@@ -91,17 +94,17 @@ public class FullComponent extends Component {
     }
     
     public String toString() {
-        return "FCmp "+node.size;
+        return "FCmp " + node.size;
     }
     
     @Override
     public void validate(Stack<Integer> location) {
         TreeUtils.assrt(active);
-        TreeUtils.assrt(node.getComponents().contains(this));
-        if(parent != null) {
+        TreeUtils.assrt(node.getChains().contains(this));
+        if (parent != null) {
             int found = 0;
-            for(Pair<Integer, Component> subcomponent : parent.subcomponents) {
-                if(subcomponent.b == this) {
+            for (Pair<Integer, Chain> subchain : parent.subchains) {
+                if (subchain.b == this) {
                     found++;
                 }
             }
@@ -109,13 +112,13 @@ public class FullComponent extends Component {
             TreeUtils.assrt(found <= 1);
             TreeUtils.assrt(parent.node.size == node.size * 2);
         }
-        TreeUtils.assrt(subcomponents == null);
-        if(supported) {
+        TreeUtils.assrt(subchains == null);
+        if (supported) {
             TreeUtils.assrt(node instanceof UnloadedNode);
         } else {
             TreeUtils.assrt(node instanceof SolidNode);
         }
-        for(Pair<Integer, Component> t : touching) {
+        for (Pair<Integer, Chain> t : touching) {
             TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction "+t.a+" size "+node.size+" location "+location);
             TreeUtils.assrt(t.b.isTouching(this, -t.a));
             TreeUtils.assrt(node.size == t.b.node.size);

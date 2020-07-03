@@ -3,12 +3,17 @@
 
 package org.terasology.fallingblocks;
 
+import org.terasology.fallingblocks.node.EmptyNode;
+import org.terasology.fallingblocks.node.InternalNode;
+import org.terasology.fallingblocks.node.Node;
+import org.terasology.fallingblocks.node.SolidNode;
+import org.terasology.fallingblocks.node.UnloadedNode;
 import org.terasology.math.geom.Vector3i;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
 
 public class TreeUtils {
-    public static final int[] directions = new int[]{-4,-2,-1,1,2,4};
+    public static final int[] DIRECTIONS = new int[]{-4, -2, -1, 1, 2, 4};
     // Does the block count as solid for the purposes of connectivity?
     // I'm avoiding inlining this because I'm not sure if it'll have to be changed at some point.
     public static boolean isSolid(Block block) {
@@ -19,8 +24,8 @@ public class TreeUtils {
      * Produce a new node representing the given region.
      */
     public static Node buildNode(WorldProvider world, int size, Vector3i pos) {
-        if(size == 1) {
-            if(isSolid(world.getBlock(pos))) {
+        if (size == 1) {
+            if (isSolid(world.getBlock(pos))) {
                 return new SolidNode(1);
             } else {
                 return EmptyNode.get(1);
@@ -29,10 +34,10 @@ public class TreeUtils {
             Node[] children = new Node[8];
             boolean empty = true;
             boolean solid = true;
-            int i=0;
-            for(int cx=0; cx<2; cx++) {
-                for(int cy=0; cy<2; cy++) {
-                    for(int cz=0; cz<2; cz++) {
+            int i = 0;
+            for (int cx = 0; cx < 2; cx++) {
+                for (int cy = 0; cy < 2; cy++) {
+                    for (int cz = 0; cz < 2; cz++) {
                         children[i] = buildNode(world, size/2, new Vector3i(cx,cy,cz).scale(size/2).add(pos));
                         empty = empty && children[i] instanceof EmptyNode;
                         solid = solid && children[i] instanceof SolidNode;
@@ -40,9 +45,9 @@ public class TreeUtils {
                     }
                 }
             }
-            if(empty) {
+            if (empty) {
                 return EmptyNode.get(size);
-            } else if(solid) {
+            } else if (solid) {
                 return new SolidNode(size);
             } else {
                 return new InternalNode(size, children);
@@ -54,15 +59,15 @@ public class TreeUtils {
      * Produce a new node that is all unloaded except for one preexisting child node.
      */
     public static Node buildExpandedNode(Node old, Vector3i pos, int size) {
-        if(old.size == size) {
+        if (old.size == size) {
             return old;
-        } else if(old.size < size/2) {
+        } else if (old.size < size/2) {
             old = buildExpandedNode(old, modVector(pos, size/2), size/2);
         }
         Node[] children = new Node[8];
         int octant = octantOfPosition(pos, size);
-        for(int i=0; i<8; i++) {
-            if(i == octant) {
+        for (int i = 0; i < 8; i++) {
+            if (i == octant) {
                 children[i] = old;
             } else {
                 children[i] = new UnloadedNode(size/2);
@@ -89,10 +94,10 @@ public class TreeUtils {
      * Tests the adjacency of child nodes of adjacent nodes, adjacent in the specified direction, or the same node it the direction is 0.
      */
     public static int isAdjacent(int octant1, int octant2, int direction) {
-        if(direction == 0) {
+        if (direction == 0) {
             return isAdjacent(octant1, octant2);
         }
-        return (isOctantOnSide(octant1, direction) && isOctantOnSide(octant2, -direction) && octant1-direction == octant2) ? direction : 0;
+        return (isOctantOnSide(octant1, direction) && isOctantOnSide(octant2, -direction) && octant1 - direction == octant2) ? direction : 0;
     }
     
     /**
@@ -120,7 +125,7 @@ public class TreeUtils {
     
     public static boolean isPositionInternal(Vector3i pos, int size) {
         return (pos.x > 0) && (pos.y > 0) && (pos.z > 0)
-               && (pos.x < size-1) && (pos.y < size-1) && (pos.z < size-1);
+               && (pos.x < size - 1) && (pos.y < size - 1) && (pos.z < size - 1);
     }
     
     public static Vector3i modVector(Vector3i v, int s) {
@@ -132,13 +137,13 @@ public class TreeUtils {
     }
     
     public static void assrt(boolean valid) {
-        if(!valid) {
+        if (!valid) {
             throw new AssertionError();
         }
     }
     
     public static void assrt(boolean valid, Object message) {
-        if(!valid) {
+        if (!valid) {
             throw new AssertionError(message);
         }
     }

@@ -1,10 +1,14 @@
 // Copyright 2020 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks;
+package org.terasology.fallingblocks.node;
 
 import java.util.*;
 
+import org.terasology.fallingblocks.Chain;
+import org.terasology.fallingblocks.FullChain;
+import org.terasology.fallingblocks.Pair;
+import org.terasology.fallingblocks.TreeUtils;
 import org.terasology.math.geom.Vector3i;
 
 /**
@@ -14,9 +18,9 @@ public class UnloadedNode extends FullNode {
     
     public UnloadedNode(int size) {
         this.size = size;
-        component = new FullComponent(this, true);
-        components = new HashSet();
-        components.add(component);
+        chain = new FullChain(this, true);
+        chains = new HashSet<>();
+        chains.add(chain);
     }
     
     /**
@@ -24,11 +28,11 @@ public class UnloadedNode extends FullNode {
      */
     @Override
     public Pair<Integer, Node> canShrink() {
-        return new Pair(-1, null);
+        return new Pair<>(-1, null);
     }
     
     @Override
-    public Pair<Node, Set<Component>> removeBlock(Vector3i pos) {
+    public Pair<Node, Set<Chain>> removeBlock(Vector3i pos) {
         throw new RuntimeException("Trying to remove a block from an unloaded node.");
     }
     
@@ -38,10 +42,10 @@ public class UnloadedNode extends FullNode {
     }
     
     public void validate(Stack<Integer> location) {
-        component.validate(location);
-        TreeUtils.assrt(components.contains(component));
-        TreeUtils.assrt(components.size() == 1);
-        TreeUtils.assrt(component != null);
-        TreeUtils.assrt(component instanceof FullComponent);
+        chain.validate(location);
+        TreeUtils.assrt(chains.contains(chain));
+        TreeUtils.assrt(chains.size() == 1);
+        TreeUtils.assrt(chain != null);
+        TreeUtils.assrt(chain instanceof FullChain);
     }
 }

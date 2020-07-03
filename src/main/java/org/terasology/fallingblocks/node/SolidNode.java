@@ -1,10 +1,13 @@
 // Copyright 2020 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks;
+package org.terasology.fallingblocks.node;
 
 import java.util.*;
 
+import org.terasology.fallingblocks.Chain;
+import org.terasology.fallingblocks.FullChain;
+import org.terasology.fallingblocks.Pair;
 import org.terasology.math.geom.Vector3i;
 
 /**
@@ -13,9 +16,9 @@ import org.terasology.math.geom.Vector3i;
 public class SolidNode extends FullNode {
     public SolidNode(int size) {
         this.size = size;
-        component = new FullComponent(this, false);
-        components = new HashSet(1);
-        components.add(component);
+        chain = new FullChain(this, false);
+        chains = new HashSet<>(1);
+        chains.add(chain);
     }
     
     @Override
@@ -28,15 +31,15 @@ public class SolidNode extends FullNode {
      */
     @Override
     public Pair<Integer, Node> canShrink() {
-        return new Pair(-2, null);
+        return new Pair<>(-2, null);
     }
     
     @Override
-    public Pair<Node, Set<Component>> removeBlock(Vector3i pos) {
-        if(size == 1) {
-            component.parent.subcomponents.removeIf(sc -> sc.b == component);
-            component.inactivate(false);
-            return new Pair(EmptyNode.get(size), component.parent.checkConnectivity());
+    public Pair<Node, Set<Chain>> removeBlock(Vector3i pos) {
+        if (size == 1) {
+            chain.parent.subchains.removeIf(sc -> sc.b == chain);
+            chain.inactivate(false);
+            return new Pair<>(EmptyNode.get(size), chain.parent.checkConnectivity());
         } else {
             return equivalentInternalNode().removeBlock(pos);
         }
