@@ -33,14 +33,10 @@ public abstract class FullNode extends Node {
     
     @Override
     public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, FullNode node, Set<Pair<Integer, Node>> siblings) {
-        if(node.size == size) {
-            // the siblings argument isn't needed here because as a FullNode, this is necessarily touching every possible neighbour already, so using component.touching is simpler.
-            logger.info("Reached the leaf "+getClass()+" of size "+size);
-            Set<Pair<Integer, Component>> touching = new HashSet(component.touching);
-            component.replaceWith(node.getComponent());
-            return new Pair(node, new Pair(node.getComponent(), touching));
+        if(size == node.size) {
+            // A custom implementation could be a little more efficient, but this is simpler.
+            return replaceWithFullNode(node, siblings);
         } else {
-            logger.info("Inserting in full node of size "+size+". Replacing.");
             return equivalentInternalNode().insertFullNode(pos, node, siblings);
         }
     }
@@ -61,21 +57,19 @@ public abstract class FullNode extends Node {
         InternalNode replacementNode = new InternalNode(size, children);
         Component replacementComponent = replacementNode.getComponents().iterator().next();
         TreeUtils.assrt(replacementNode.getComponents().size() == 1);
-        if(size > 2) {
-            for(Pair<Integer, Component> touching : component.touching) {
-                if(touching.b.subcomponents != null) {
-                    for(Pair<Integer, Component> subcomponent : touching.b.subcomponents) {
-                        if(TreeUtils.isOctantOnSide(subcomponent.a, -touching.a)) {
-                            Component neighbour = ((FullNode)children[touching.a+subcomponent.a]).getComponent();
-                            subcomponent.b.touching.add(new Pair(-touching.a, neighbour));
-                            neighbour.touching.add(new Pair(touching.a, subcomponent.b));
-                        }
+        for(Pair<Integer, Component> touching : component.touching) {
+            if(touching.b.subcomponents != null) {
+                for(Pair<Integer, Component> subcomponent : touching.b.subcomponents) {
+                    if(TreeUtils.isOctantOnSide(subcomponent.a, -touching.a)) {
+                        Component neighbour = ((FullNode)children[touching.a+subcomponent.a]).getComponent();
+                        subcomponent.b.touching.add(new Pair(-touching.a, neighbour));
+                        neighbour.touching.add(new Pair(touching.a, subcomponent.b));
                     }
                 }
             }
         }
         component.replaceWith(replacementComponent);
-        logger.info("Splitting node of type "+getClass()+", size "+size);
+        //logger.info("Splitting node of type "+getClass()+", size "+size);
         return replacementNode;
     }
 }

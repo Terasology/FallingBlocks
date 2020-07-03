@@ -45,7 +45,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     
     private Node rootNode = null;
     private Vector3i rootNodePos = null;
-    private static int ROOT_NODE_SIZE = ChunkConstants.SIZE_X; //This actually needs to be the minimum of SIZE_X, SIZE_Y and SIZE_Z, but it's assumed later that SIZE_Y >= SIZE_X = SIZE_Z anyway.
+    private static final int CHUNK_NODE_SIZE = ChunkConstants.SIZE_X; //This actually needs to be the minimum of SIZE_X, SIZE_Y and SIZE_Z, but it's assumed later that SIZE_Y >= SIZE_X = SIZE_Z anyway.
     private static final int ROOT_OFFSET = 0xAAAAAAA0; //The octree structure divides at different levels in fixed locations. This constant is chosen so that, as far as possible, the highest-level divisions are far from the origin, so that the root node isn't likely to need to be very large just because the relevant region overlaps one of the divisions.
     
     private Set<Vector3i> additionQueue;
@@ -123,10 +123,10 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     public void chunkLoaded(OnChunkLoaded event, EntityRef entity) {
         Vector3i chunkPos = event.getChunkPos();
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
-        for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
+        for(int y=0; y<ChunkConstants.SIZE_Y; y += CHUNK_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
             //logger.info("Loading chunk at "+pos+".");
-            Node node = TreeUtils.buildNode(worldProvider, ROOT_NODE_SIZE, pos);
+            Node node = TreeUtils.buildNode(worldProvider, CHUNK_NODE_SIZE, pos);
             //logger.info("Built. #Components = "+node.getComponents().size());
             if(rootNode == null) {
                 //logger.info("Starting new root node.");
@@ -148,6 +148,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                     checkComponentDetached(component);
                 }
             }
+            //rootNode.validate();
         }
     }
     
@@ -155,10 +156,10 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     public void chunkUnloaded(BeforeChunkUnload event, EntityRef entity) {
         Vector3i chunkPos = event.getChunkPos();
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
-        for(int y=0; y<ChunkConstants.SIZE_Y; y += ROOT_NODE_SIZE) {
+        for(int y=0; y<ChunkConstants.SIZE_Y; y += CHUNK_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
             //logger.info("Unloading chunk at "+pos+".");
-            rootNode = rootNode.removeChunk(pos.sub(rootNodePos), ROOT_NODE_SIZE).a;
+            rootNode = rootNode.removeChunk(pos.sub(rootNodePos), CHUNK_NODE_SIZE).a;
             Pair<Integer, Node> shrinking = rootNode.canShrink();
             if(shrinking.a >= 0) {
                 //logger.info("Shrinking root node to octant "+shrinking.a+", size "+shrinking.b.size+".");

@@ -24,7 +24,7 @@ public abstract class Node {
     public abstract Pair<Node, Set<Component>> removeBlock(Vector3i pos);
     
     public Pair<Node, Component> addBlock(Vector3i pos) {
-        Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> result = insertFullNode(pos, SolidNode.get(1), new HashSet());
+        Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> result = insertFullNode(pos, new SolidNode(1), new HashSet());
         return new Pair(result.a, result.b.a);
     }
     
@@ -38,6 +38,38 @@ public abstract class Node {
      * @return The node to replace this with, the component containing the new block, and the adjacent components.
      */
     abstract Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, FullNode node, Set<Pair<Integer, Node>> siblings);
+
+    /**
+     * Like insertFullNode, but assuming that this node is the same size, and is therefore replaced entirely.
+     */
+    public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> replaceWithFullNode(FullNode node, Set<Pair<Integer, Node>> siblings) {
+        if(node.size != size) {
+            throw new IllegalArgumentException("replaceWithFullNode is only for nodes of the same size.");
+        }
+        //logger.info("Replacing Node, size "+size);
+        Component component = node.getComponent();
+        if(!getComponents().isEmpty()) {
+            Component firstOldComponent = getComponents().iterator().next();
+            Set<Component> tempComponents = new HashSet(getComponents());
+            for(Component oldComponent : tempComponents) {
+                if(oldComponent != firstOldComponent) {
+                    firstOldComponent.merge(oldComponent);
+                }
+            }
+            firstOldComponent.inactivate(true);
+        }
+        Set<Pair<Integer, Component>> nextTouching = new HashSet();
+        for(Pair<Integer, Node> siblingPair : siblings) {
+            int direction = siblingPair.a;
+            Node sibling = siblingPair.b;
+            for(Component siblingComponent : sibling.getComponents()) {
+                if(component.updateTouching(siblingComponent, direction)) {
+                    nextTouching.add(new Pair(direction, siblingComponent));
+                }
+            }
+        }
+        return new Pair(node, new Pair(component, nextTouching));
+    }
     
     /**
      * Replace an UnloadedNode with something else.

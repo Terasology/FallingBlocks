@@ -11,7 +11,7 @@ import org.terasology.math.geom.Vector3i;
  * A connected component within an octree node.
  */
 public class Component {
-    // Pairs of the index of a child node of this component's node, and a component within that child which is part of this. The components are null if the child node is a leaf.
+    // Pairs of the index of a child node of this component's node, and a component within that child which is part of this.
     public Set<Pair<Integer, Component>> subcomponents;
     // Pairs of a component in another node of the same size, with the direction to that node.
     public Set<Pair<Integer, Component>> touching;
@@ -25,9 +25,7 @@ public class Component {
         touching = new HashSet();
         subcomponents.add(new Pair<>(childIndex, childComponent));
         deriveTouchingFromSubcomponents();
-        if(childComponent != null) {
-            childComponent.parent = this;
-        }
+        childComponent.parent = this;
         this.node = node;
         resetSupported();
     }
@@ -43,22 +41,17 @@ public class Component {
     
     /**
      * Adds those components that it can be derived that ke'a touches this from
-     * the subcomponents. This may miss some, in the cases that the subcomponents
-     * are null (leaves, size=1), or this is touching a FullComponent, which doesn't
-     * have subcomponents.
+     * the subcomponents. This may miss some, in the cases that this is touching
+     * a FullComponent, which doesn't have subcomponents.
      */
     void deriveTouchingFromSubcomponents() {
         for(Pair<Integer, Component> subcomponent : subcomponents) {
             int octant = subcomponent.a;
             Component child = subcomponent.b;
-            // If this is a level-2 component, its children don't actually have the adjacency data, so whatever calls the constructor has to take responsibility instead.
-            if(child == null) {
-                return;
-            }
             for(Pair<Integer, Component> childTouching : child.touching) {
                 int side = childTouching.a;
                 Component newTouching = childTouching.b.parent;
-                if(newTouching != null && TreeUtils.isOctantOnSide(octant, side)) {
+                if(TreeUtils.isOctantOnSide(octant, side)) {
                     this.touching.add(new Pair( side, newTouching));
                     newTouching.touching.add(new Pair(-side, this));
                 }
@@ -67,7 +60,7 @@ public class Component {
     }
     
     public void resetSupported() {
-        supported = subcomponents.stream().anyMatch((Pair<Integer, Component> sc) -> sc.b != null && sc.b.supported);
+        supported = subcomponents.stream().anyMatch((Pair<Integer, Component> sc) -> sc.b.supported);
     }
     
     public void merge(Component sibling) {
@@ -82,9 +75,7 @@ public class Component {
             t.b.touching.add(new Pair(-t.a, this));
         }
         for(Pair<Integer, Component> newSubcomponent : sibling.subcomponents) {
-            if(newSubcomponent.b != null) {
-                newSubcomponent.b.parent = this;
-            }
+            newSubcomponent.b.parent = this;
         }
         if(sibling.parent != null) {
             Iterator<Pair<Integer, Component>> it = sibling.parent.subcomponents.iterator();
@@ -157,9 +148,6 @@ public class Component {
                 if(adjacency == 0) {
                     continue;
                 }
-                if(subcomponent1.b == null) { // They're both leaves.
-                    return true;
-                }
                 if(subcomponent1.b.isTouching(subcomponent2.b, adjacency)) {
                     return true;
                 }
@@ -184,16 +172,10 @@ public class Component {
         for(Pair<Integer, Component> subcomponent1 : subcomponents) {
             for(Pair<Integer, Component> subcomponent2 : sibling.subcomponents) {
                 int adjacency = TreeUtils.isAdjacent(subcomponent1.a, subcomponent2.a, direction);
-                
-                if(adjacency == 0) {
-                    continue;
-                }
-                if(subcomponent1.b == null) { // They're both leaves.
+
+                if(adjacency != 0 && subcomponent1.b.updateTouching(subcomponent2.b, adjacency)) {
                     result = true;
-                    break;
-                }
-                if(subcomponent1.b.updateTouching(subcomponent2.b, adjacency)) {
-                    result = true;
+                    // The test has side-effects, so the loops must continue.
                 }
             }
         }
@@ -227,7 +209,7 @@ public class Component {
                 while(others.hasNext()) {
                     Pair<Integer, Component> other = others.next();
                     int direction = TreeUtils.isAdjacent(current.a, other.a);
-                    if(direction != 0 && (current.b == null || current.b.isTouching(other.b, direction))) {
+                    if(direction != 0 && current.b.isTouching(other.b, direction)) {
                         edge.push(other);
                         others.remove();
                     }
@@ -239,9 +221,7 @@ public class Component {
                 Component fragment = new Component(connectedComponent, parent, node);
                 result.add(fragment);
                 for(Pair<Integer, Component> subcomponent : connectedComponent) {
-                    if(subcomponent.b != null) {
-                        subcomponent.b.parent = fragment;
-                    }
+                    subcomponent.b.parent = fragment;
                 }
                 for(Pair<Integer, Component> touchingThis : touching) {
                     if(fragment.baseIsTouching(touchingThis.b, touchingThis.a)) {
@@ -293,7 +273,7 @@ public class Component {
     
     public boolean isTouching(int side) {
         for(Pair<Integer, Component> subcomponent : subcomponents) {
-            if(TreeUtils.isOctantOnSide(subcomponent.a, side) && (subcomponent.b == null || subcomponent.b.isTouching(side))) {
+            if(TreeUtils.isOctantOnSide(subcomponent.a, side) && subcomponent.b.isTouching(side)) {
                 return true;
             }
         }
@@ -318,11 +298,7 @@ public class Component {
             subPosition.add(TreeUtils.isOctantOnSide(octant, 4) ? size/2 : 0,
                             TreeUtils.isOctantOnSide(octant, 2) ? size/2 : 0,
                             TreeUtils.isOctantOnSide(octant, 1) ? size/2 : 0);
-            if(subcomponent.b == null) {
-                result.add(subPosition);
-            } else {
-                result.addAll(subcomponent.b.getPositions(subPosition));
-            }
+            result.addAll(subcomponent.b.getPositions(subPosition));
         }
         return result;
     }
@@ -334,7 +310,7 @@ public class Component {
         }
         if(subcomponents != null) {
             for(Pair<Integer, Component> sc : subcomponents) {
-                if(sc.b != null && sc.b.parent == this && sc.b.isActive()) {
+                if(sc.b.parent == this && sc.b.isActive()) {
                     sc.b.inactivate(false);
                 }
             }
@@ -361,11 +337,7 @@ public class Component {
             } else {
                 result += ", ";
             }
-            if(subcomponent.b == null) {
-                result += subcomponent.a;
-            } else {
-                result += subcomponent.toString();
-            }
+            result += subcomponent.toString();
         }
         return result+"]";
     }
@@ -386,14 +358,9 @@ public class Component {
         }
         TreeUtils.assrt(!subcomponents.isEmpty());
         for(Pair<Integer, Component> subcomponent : subcomponents) {
-            if(node.size == 2) {
-                TreeUtils.assrt(subcomponent.b == null);
-                TreeUtils.assrt(((InternalNode)node).children[subcomponent.a] != null);
-            } else {
-                TreeUtils.assrt(subcomponent.b.parent == this);
-                TreeUtils.assrt(subcomponent.b.isActive()); // In theory, this is covered by the next test (if it's in a node's component list, it'll be validated), but it looks like it's failing.
-                TreeUtils.assrt(((InternalNode)node).children[subcomponent.a].getComponents().contains(subcomponent.b));
-            }
+            TreeUtils.assrt(subcomponent.b.parent == this);
+            TreeUtils.assrt(subcomponent.b.isActive()); // In theory, this is covered by the next test (if it's in a node's component list, it'll be validated), but it looks like it's failing.
+            TreeUtils.assrt(((InternalNode)node).children[subcomponent.a].getComponents().contains(subcomponent.b));
         }
         boolean prevSupported = supported;
         resetSupported();
@@ -413,9 +380,6 @@ public class Component {
      * (and sub-sub-components ect.) are touching.
      */
     public static void validateTouching(Component component1, Component component2, int direction) {
-        if(component1 == null || component2 == null) {
-            return;
-        }
         if(component1.baseIsTouching(component2, direction)) {
             TreeUtils.assrt(component1.isTouching(component2, direction), "size = "+component1.node.size+" direction = "+direction);
         }
@@ -432,13 +396,4 @@ public class Component {
             }
         }
     }
-    
-    /*@Override
-    public int hashCode() {
-        if(isActive()) {
-            return super.hashCode();
-        } else {
-            throw new RuntimeException(); // hacky way of checking that this isn't added to hashSets after being inactivated.
-        }
-    }*/
 }

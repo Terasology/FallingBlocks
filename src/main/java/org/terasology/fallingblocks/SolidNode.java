@@ -11,30 +11,16 @@ import org.terasology.math.geom.Vector3i;
  * Nodes full of solid blocks.
  */
 public class SolidNode extends FullNode {
-    public static final SolidNode node = new SolidNode(1);
-    
-    private SolidNode(int size) {
+    public SolidNode(int size) {
         this.size = size;
-        if(size == 1) {
-            component = null;
-        } else {
-            component = new FullComponent(this, false);
-        }
-        components = new HashSet();
+        component = new FullComponent(this, false);
+        components = new HashSet(1);
         components.add(component);
-    }
-    
-    public static SolidNode get(int size) {
-        if(size == 1) {
-            return node;
-        } else {
-            return new SolidNode(size);
-        }
     }
     
     @Override
     public FullNode getSimilar(int size) {
-        return SolidNode.get(size);
+        return new SolidNode(size);
     }
     
     /**
@@ -48,7 +34,9 @@ public class SolidNode extends FullNode {
     @Override
     public Pair<Node, Set<Component>> removeBlock(Vector3i pos) {
         if(size == 1) {
-            return new Pair(EmptyNode.get(size), null);
+            component.parent.subcomponents.removeIf(sc -> sc.b == component);
+            component.inactivate(false);
+            return new Pair(EmptyNode.get(size), component.parent.checkConnectivity());
         } else {
             return equivalentInternalNode().removeBlock(pos);
         }

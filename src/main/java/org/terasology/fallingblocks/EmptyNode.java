@@ -49,8 +49,8 @@ public class EmptyNode extends Node {
     
     @Override
     public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, FullNode node, Set<Pair<Integer, Node>> siblings) {
-        if(size == 1) {
-            return new Pair(node, new Pair(node.getComponent(), null));
+        if(size == node.size) {
+            return replaceWithFullNode(node, siblings);
         } else {
             return equivalentInternalNode().insertFullNode(pos, node, siblings);
         }

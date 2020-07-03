@@ -4,6 +4,7 @@
 package org.terasology.fallingblocks;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,7 @@ public class InternalNode extends Node {
                 Pair<Integer, Component> current = stack.pop();
                 for(Pair<Integer, Component> next : subComponents) {
                     int direction = TreeUtils.isAdjacent(current.a, next.a);
-                    if(direction != 0 && (size == 2 || current.b.updateTouching(next.b, direction))) {
+                    if(direction != 0 && current.b.updateTouching(next.b, direction)) {
                         if(!rawComponent.contains(next)) {
                             rawComponent.add(next);
                             stack.push(next);
@@ -59,10 +60,8 @@ public class InternalNode extends Node {
             
             Component component = new Component(rawComponent, null, this);
             components.add(component);
-            if(size > 2) {
-                for(Pair<Integer, Component> sc : rawComponent) {
-                    sc.b.parent = component;
-                }
+            for(Pair<Integer, Component> sc : rawComponent) {
+                sc.b.parent = component;
             }
         }
     }
@@ -76,26 +75,9 @@ public class InternalNode extends Node {
     public Pair<Node, Set<Component>> removeBlock(Vector3i pos) {
         int octant = TreeUtils.octantOfPosition(pos, size);
         Vector3i subPosition = TreeUtils.modVector(pos, size/2);
-        Set<Component> splitComponents = null; //Set to null initially just to avoid the uninitialized error, but it should always be set to something later.
-        // If the children are leaves, they don't actually have references to Components, so a more brute-force method is necessary to find which of the components of this node contains the removed block.
-        if(size == 2) {
-            children[octant] = EmptyNode.get(1);
-            outer : for(Component component : components) {
-                for(Pair<Integer, Component> subcomponent : component.subcomponents) {
-                    if(subcomponent.a == octant) { // This will be satisfied exactly once.
-                        component.subcomponents.remove(subcomponent);
-                        splitComponents = component.checkConnectivity();
-                        //component.supported must already be false, because all unloaded Components have size at least 32, so that doesn't need to be updated.
-                        break outer;
-                    }
-                }
-            }
-        } else {
-            Pair<Node, Set<Component>> childResult = children[octant].removeBlock(subPosition);
-            children[octant] = childResult.a;
-            splitComponents = childResult.b;
-        }
-        return new Pair(components.isEmpty() ? EmptyNode.get(size) : this, splitComponents);
+        Pair<Node, Set<Component>> childResult = children[octant].removeBlock(subPosition);
+        children[octant] = childResult.a;
+        return new Pair(components.isEmpty() ? EmptyNode.get(size) : this, childResult.b);
     }
     
     /**
@@ -106,29 +88,7 @@ public class InternalNode extends Node {
     @Override
     public Pair<Node, Pair<Component, Set<Pair<Integer, Component>>>> insertFullNode(Vector3i pos, FullNode node, Set<Pair<Integer, Node>> siblings) {
         if(size == node.size) {
-            //logger.info("Replacing InternalNode, size "+size);
-            Component component = node.getComponent();
-            if(!components.isEmpty()) {
-                Component firstOldComponent = components.iterator().next();
-                Set<Component> tempComponents = new HashSet(components);
-                for(Component oldComponent : tempComponents) {
-                    if(oldComponent != firstOldComponent) {
-                        firstOldComponent.merge(oldComponent);
-                    }
-                }
-                firstOldComponent.inactivate(true);
-            }
-            Set<Pair<Integer, Component>> nextTouching = new HashSet();
-            for(Pair<Integer, Node> siblingPair : siblings) {
-                int direction = siblingPair.a;
-                Node sibling = siblingPair.b;
-                for(Component siblingComponent : sibling.getComponents()) {
-                    if(component.updateTouching(siblingComponent, direction)) {
-                        nextTouching.add(new Pair(direction, siblingComponent));
-                    }
-                }
-            }
-            return new Pair(node, new Pair(component, nextTouching));
+            return replaceWithFullNode(node, siblings);
         }
         
         int octant = TreeUtils.octantOfPosition(pos, size);
@@ -150,10 +110,11 @@ public class InternalNode extends Node {
             int side = siblingPair.a;
             Node sibling = siblingPair.b;
             TreeUtils.assrt(sibling.size == size);
-            if(sibling != null && sibling instanceof InternalNode) {
+            TreeUtils.assrt(TreeUtils.isOctantOnSide(octant,side));
+            if(sibling instanceof InternalNode) {
                 Node child = ((InternalNode)sibling).children[octant-side];
                 //logger.info("Existing sibling on side "+side+", "+child.getClass());
-                if(!(child instanceof EmptyNode)) {
+                if(!(child.getComponents().isEmpty())) {
                     nextSiblings.add(new Pair(side, child));
                 }
             }
@@ -163,75 +124,44 @@ public class InternalNode extends Node {
         children[octant] = p.a;
         Component newComponent = p.b.a;
         Set<Pair<Integer, Component>> touching = p.b.b;
-        
-        Component parentComponent; // If newComponent != null, parentComponent == newComponent.parent.
-        if(newComponent != null && newComponent.parent != null) {
-            parentComponent = newComponent.parent;
-        } else { // The block hasn't merged into any existing components.
-            parentComponent = new Component(octant, newComponent, this);
-            components.add(parentComponent);
-            if(newComponent != null) {
-                newComponent.parent = parentComponent;
-            }
+
+        if(newComponent.parent == null) { // The block hasn't merged into any existing components.
+            components.add(new Component(octant, newComponent, this));
         }
         
         Set<Pair<Integer, Component>> nextTouching = new HashSet();
-        if(touching == null) {
-            TreeUtils.assrt(size == 2, size);
-            //logger.info("Size 2, parentComponent = "+parentComponent);
-            for(Pair<Integer, Node> siblingPair : siblings) {
-                int side = siblingPair.a;
-                Node sibling = siblingPair.b;
-                for(Component siblingComponent : sibling.getComponents()) {
-                    //logger.info("Testing siblings, side "+side+", "+siblingComponent);
-                    if(parentComponent.baseIsTouching(siblingComponent, side)) {
-                        //logger.info("touching");
-                        nextTouching.add(new Pair(side, siblingComponent));
-                    }
-                }
+
+        //logger.info("Back to size "+size);
+        for(Pair<Integer, Node> sibling : siblings) {
+            if(sibling.b instanceof FullNode) {
+                nextTouching.add(new Pair(sibling.a, ((FullNode)sibling.b).getComponent()));
             }
-            Set<Component> tempComponents = new HashSet(components); // The list may be changed during the iteration, so the iterator may misbehave.
-            for(Component component : tempComponents) {
-                if(component == parentComponent || !component.isActive()) {
-                    continue;
-                }
-                
-                if(component.isTouching(parentComponent, 0)) {
-                    component.merge(parentComponent);
-                    parentComponent = component;
-                }
-            }
-        } else {
-            //logger.info("Back to size "+size);
-            for(Pair<Integer, Node> sibling : siblings) {
-                if(sibling.b instanceof FullNode) {
-                    nextTouching.add(new Pair(sibling.a, ((FullNode)sibling.b).getComponent()));
-                }
-            }
-            for(Pair<Integer, Component> t : touching) {
-                Component touchingComponent = t.b.parent;
-                TreeUtils.assrt(touchingComponent != null); //If this is the root node, touching is already empty.
-                if(touchingComponent == parentComponent) {
-                    //logger.info("touching on side "+t.a+" superfluous.");
-                    continue;
-                } else if(touchingComponent.node == this) {
-                    //logger.info("touching on side "+t.a+" needs merging.");
-                    touchingComponent.merge(parentComponent);
-                    parentComponent = touchingComponent;
-                } else {
-                    //logger.info("touching on side "+t.a+" needs recording, carrying up.");
-                    nextTouching.add(new Pair(t.a, touchingComponent));
-                }
-            }
-            //logger.info("After merging down, "+components.size()+" components left.");
         }
+        for(Pair<Integer, Component> t : touching) {
+            Component touchingComponent = t.b.parent;
+            TreeUtils.assrt(touchingComponent != null); //If this is the root node, touching is already empty.
+            if(touchingComponent == newComponent.parent) {
+                //logger.info("touching on side "+t.a+" superfluous.");
+                continue;
+            } else if(touchingComponent.node == this) {
+                //logger.info("touching on side "+t.a+" needs merging.");
+                touchingComponent.merge(newComponent.parent);
+                //newComponent.parent is set to touchingComponent.
+            } else {
+                //logger.info("touching on side "+t.a+" needs recording, carrying up.");
+                nextTouching.add(new Pair(t.a, touchingComponent));
+            }
+        }
+        //logger.info("After merging down, "+components.size()+" components left.");
+
         for(Pair<Integer, Component> t : nextTouching) {
-            TreeUtils.assrt(parentComponent.baseIsTouching(t.b, t.a));
-            TreeUtils.assrt(t.b.baseIsTouching(parentComponent,-t.a));
-            parentComponent.touching.add(t);
-            t.b.touching.add(new Pair(-t.a, parentComponent));
+            TreeUtils.assrt(newComponent.parent.baseIsTouching(t.b, t.a));
+            TreeUtils.assrt(t.b.baseIsTouching(newComponent.parent,-t.a));
+            newComponent.parent.touching.add(t);
+            t.b.touching.add(new Pair(-t.a, newComponent.parent));
             //logger.info("Recording touch, side "+t.a);
         }
+
         boolean uniformClass = true;
         for(int i=1; i<8; i++) {
             if(children[i].getClass() != children[0].getClass()) {
@@ -240,36 +170,15 @@ public class InternalNode extends Node {
         }
         if(uniformClass && (children[0] instanceof FullNode)) {
             //logger.info("Replacing with "+children[0].getClass()+". size "+size);
-            FullNode replacement = node.getSimilar(size);
-            Component oldComponent = components.iterator().next();
-            TreeUtils.assrt(oldComponent == parentComponent);
-            Component replacementComponent = replacement.getComponent();
-            if(size > 2) {
-                for(int i=0; i<8; i++) {
-                    ((FullNode)children[i]).getComponent().inactivate(false);
-                }
+            Set<Pair<Integer, Node>> altSiblings = new HashSet();
+            for(Pair<Integer, Component> t : newComponent.parent.touching) {
+                altSiblings.add(new Pair(t.a, t.b.node));
             }
-            if(oldComponent.parent != null) {
-                for(Pair<Integer, Component> subcomponent : oldComponent.parent.subcomponents) {
-                    if(subcomponent.b == oldComponent) {
-                        oldComponent.parent.subcomponents.remove(subcomponent);
-                        oldComponent.parent.subcomponents.add(new Pair(subcomponent.a, replacementComponent));
-                        break;
-                    }
-                }
-            }
-            replacementComponent.parent = oldComponent.parent;
-            replacementComponent.touching.addAll(oldComponent.touching);
-            for(Pair<Integer, Component> t : replacementComponent.touching) {
-                //logger.info("Updating touching on side "+t.a+" to replacement component.");
-                TreeUtils.assrt(t.b.touching.contains(new Pair(-t.a, oldComponent)));
-                t.b.touching.remove(new Pair(-t.a, oldComponent));
-                t.b.touching.add(new Pair(-t.a, replacementComponent));
-            }
-            oldComponent.inactivate(false);
-            return new Pair(replacement, new Pair(replacementComponent, nextTouching));
+            // This larger replacement node may be touching nodes farther away than those in the siblings set, so a new version is necessary. This seems a little dodgy in that it breaks a few of the general assumptions in how insertFullNode works, but it should be okay.
+            return replaceWithFullNode(node.getSimilar(size), altSiblings);
         }
-        return new Pair(this, new Pair(parentComponent, nextTouching));
+
+        return new Pair(this, new Pair(newComponent.parent, nextTouching));
     }
     
     /**

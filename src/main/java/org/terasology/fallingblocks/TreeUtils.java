@@ -21,7 +21,7 @@ public class TreeUtils {
     public static Node buildNode(WorldProvider world, int size, Vector3i pos) {
         if(size == 1) {
             if(isSolid(world.getBlock(pos))) {
-                return SolidNode.get(1);
+                return new SolidNode(1);
             } else {
                 return EmptyNode.get(1);
             }
@@ -43,7 +43,7 @@ public class TreeUtils {
             if(empty) {
                 return EmptyNode.get(size);
             } else if(solid) {
-                return SolidNode.get(size);
+                return new SolidNode(size);
             } else {
                 return new InternalNode(size, children);
             }
