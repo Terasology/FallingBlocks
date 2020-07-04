@@ -1,6 +1,6 @@
 {
     "id" : "FallingBlocks",
-    "version" : "0.1.4",
+    "version" : "0.1.5",
     "author" : "4Denthusiast",
     "displayName" : "FallingBlocks",
     "description" : "Detects groups of blocks disconnected from the ground to let them fall",

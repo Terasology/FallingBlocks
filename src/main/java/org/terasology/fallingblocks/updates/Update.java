@@ -1,0 +1,16 @@
+// Copyright 2020 The Terasology Foundation
+// SPDX-License-Identifier: Apache-2.0
+
+package org.terasology.fallingblocks.updates;
+
+import java.util.*;
+
+import org.terasology.fallingblocks.Chain;
+import org.terasology.fallingblocks.Tree;
+
+/**
+ * A message from the main thread to the UpdateThread to modify the octree somehow.
+ */
+public interface Update {
+    public Set<Chain> execute(Tree tree);
+}

@@ -4,6 +4,7 @@
 package org.terasology.fallingblocks;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,13 @@ import org.terasology.entitySystem.systems.RegisterMode;
 import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.entitySystem.systems.UpdateSubscriberSystem;
 import org.terasology.fallingblocks.node.Node;
+import org.terasology.fallingblocks.updates.AdditionUpdate;
+import org.terasology.fallingblocks.updates.LoadUpdate;
+import org.terasology.fallingblocks.updates.RemovalUpdate;
+import org.terasology.fallingblocks.updates.UnloadUpdate;
+import org.terasology.fallingblocks.updates.UpdateThread;
+import org.terasology.fallingblocks.updates.Update;
+import org.terasology.fallingblocks.updates.ValidateUpdate;
 import org.terasology.input.cameraTarget.CameraTargetSystem;
 import org.terasology.logic.console.commandSystem.annotations.Command;
 import org.terasology.logic.health.DestroyEvent;
@@ -43,23 +51,23 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     @In
     private PrefabManager prefabManager;
     private Prefab fallingDamageType;
-    
-    private Node rootNode = null;
-    private Vector3i rootNodePos = null;
-    private static final int CHUNK_NODE_SIZE = ChunkConstants.SIZE_X; //This actually needs to be the minimum of SIZE_X, SIZE_Y and SIZE_Z, but it's assumed later that SIZE_Y >= SIZE_X = SIZE_Z anyway.
-    private static final int ROOT_OFFSET = 0xAAAAAAA0; //The octree structure divides at different levels in fixed locations. This constant is chosen so that, as far as possible, the highest-level divisions are far from the origin, so that the root node isn't likely to need to be very large just because the relevant region overlaps one of the divisions.
-    
-    private Set<Vector3i> additionQueue;
-    private Set<Vector3i> removalQueue;
+
+    private BlockingQueue<Update> updateQueue;
+    private BlockingQueue<Set<Vector3i>> detachedChainQueue;
+    private Object updatingFinishedMonitor;
+    private UpdateThread updateThread;
 
     @In
     private CameraTargetSystem cameraTarget;
     
     @Override
     public void initialise() {
-        additionQueue = new HashSet<>();
-        removalQueue = new HashSet<>();
         fallingDamageType = prefabManager.getPrefab("fallingBlocks:blockFallingDamage");
+        updateQueue = new LinkedBlockingQueue<>();
+        detachedChainQueue = new LinkedBlockingQueue<>();
+        updatingFinishedMonitor = new Object();
+        updateThread = new UpdateThread(updateQueue, detachedChainQueue, updatingFinishedMonitor);
+        updateThread.start();
     }
     
     // TODO: Maybe make this a WorldChangeListener instead? Compare efficiency. Aggregate changes into batches (should improve efficiency and avoid confusing reentrant behaviour when falling blocks cause block updates).
@@ -75,9 +83,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         boolean oldSolid = TreeUtils.isSolid(event.getOldType());
         boolean newSolid = TreeUtils.isSolid(event.getNewType());
         if (oldSolid && !newSolid) {
-            removalQueue.add(event.getBlockPosition());
+            updateQueue.add(new RemovalUpdate(event.getBlockPosition()));
         } else if (newSolid && !oldSolid) {
-            additionQueue.add(event.getBlockPosition());
+            updateQueue.add(new AdditionUpdate(event.getBlockPosition()));
         }
     }
     
@@ -86,37 +94,10 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
      */
     @Override
     public void update(float delta) {
-        if (!removalQueue.isEmpty() || !additionQueue.isEmpty()) {
-            // If a block group falls, that causes more removals, but those need to be dealt with separately or it could get messy.
-            Set<Vector3i> oldRemovals = removalQueue;
-            removalQueue = new HashSet<>();
-            Set<Vector3i> oldAdditions = additionQueue;
-            additionQueue = new HashSet<>();
-            
-            // All the top-level chains at risk of being detached by this update.
-            Set<Chain> updatedChains = new HashSet<>();
-            
-            // Dealing with additions first is probably a bit more efficient.
-            for (Vector3i worldPos : oldAdditions) {
-                if (!worldProvider.isBlockRelevant(worldPos)) {
-                    continue;
-                }
-                Vector3i pos = new Vector3i(worldPos).sub(rootNodePos);
-                Pair<Node, Chain> additionResult = rootNode.addBlock(pos);
-                rootNode = additionResult.a;
-                updatedChains.add(additionResult.b);
-            }
-            for (Vector3i worldPos : oldRemovals) {
-                if (!worldProvider.isBlockRelevant(worldPos)) {
-                    continue;
-                }
-                Vector3i pos = new Vector3i(worldPos).sub(rootNodePos);
-                updatedChains.addAll(rootNode.removeBlock(pos).b);
-            }
-            
-            for (Chain chain : updatedChains) {
-                checkChainDetached(chain);
-            }
+        Set<Vector3i> positions = detachedChainQueue.poll();
+        while (positions != null) {
+            blockGroupDetached(positions);
+            positions = detachedChainQueue.poll();
         }
     }
     
@@ -124,32 +105,11 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     public void chunkLoaded(OnChunkLoaded event, EntityRef entity) {
         Vector3i chunkPos = event.getChunkPos();
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
-        for (int y = 0; y < ChunkConstants.SIZE_Y; y += CHUNK_NODE_SIZE) {
+        for (int y = 0; y < ChunkConstants.SIZE_Y; y += Tree.CHUNK_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
             //logger.info("Loading chunk at "+pos+".");
-            Node node = TreeUtils.buildNode(worldProvider, CHUNK_NODE_SIZE, pos);
-            //logger.info("Built. #Chains = "+node.getChains().size());
-            if (rootNode == null) {
-                //logger.info("Starting new root node.");
-                rootNode = node;
-                rootNodePos = pos;
-            }
-            while (!isWithinRootNode(pos)) {
-                Vector3i relativePos = TreeUtils.modVector(new Vector3i(rootNodePos).add(ROOT_OFFSET, ROOT_OFFSET, ROOT_OFFSET), rootNode.size * 2);
-                Vector3i newRootNodePos = new Vector3i(rootNodePos).sub(relativePos);
-                //logger.info("Expanding root node from "+rootNodePos+", "+rootNode.size+" to "+newRootNodePos);
-                // buildExpandedNode could return a different type of node if its old node argument is a non-internal node, with the same size as the size argument. That can't happen here.
-                rootNode = TreeUtils.buildExpandedNode(rootNode, relativePos, rootNode.size*2);
-                rootNodePos = newRootNodePos;
-            }
-            if (rootNode != node) {
-                Set<Chain> updatedChains = rootNode.insertNewChunk(node, new Vector3i(pos).sub(rootNodePos));
-                //logger.info("Inserted.");
-                for (Chain chain : updatedChains) {
-                    checkChainDetached(chain);
-                }
-            }
-            //rootNode.validate();
+            boolean[] chunkData = TreeUtils.extractChunkData(worldProvider, pos);
+            updateQueue.add(new LoadUpdate(chunkData, pos));
         }
     }
     
@@ -157,45 +117,10 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     public void chunkUnloaded(BeforeChunkUnload event, EntityRef entity) {
         Vector3i chunkPos = event.getChunkPos();
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
-        for (int y = 0; y < ChunkConstants.SIZE_Y; y += CHUNK_NODE_SIZE) {
+        for (int y = 0; y < ChunkConstants.SIZE_Y; y += Tree.CHUNK_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).addY(y);
             //logger.info("Unloading chunk at "+pos+".");
-            rootNode = rootNode.removeChunk(pos.sub(rootNodePos), CHUNK_NODE_SIZE).a;
-            Pair<Integer, Node> shrinking = rootNode.canShrink();
-            if (shrinking.a >= 0) {
-                //logger.info("Shrinking root node to octant "+shrinking.a+", size "+shrinking.b.size+".");
-                rootNode = shrinking.b;
-                for (Chain chain : rootNode.getChains()) {
-                    TreeUtils.assrt(!(chain.parent instanceof FullChain));
-                    Chain parent = chain.parent;
-                    chain.parent = null;
-                    parent.inactivate(false); // It has to be done in this order so as to not also inactivate the chain itself.
-                    chain.touching.clear();
-                }
-                rootNodePos.add(TreeUtils.octantVector(shrinking.a, rootNode.size));
-            } else if (shrinking.a == -1) {
-                rootNode = null;
-                rootNodePos = null;
-            }
-        }
-    }
-    
-    private boolean isWithinRootNode(Vector3i pos) {
-        return rootNodePos != null
-            && pos.x >= rootNodePos.x
-            && pos.y >= rootNodePos.y
-            && pos.z >= rootNodePos.z
-            && pos.x < rootNodePos.x + rootNode.size
-            && pos.y < rootNodePos.y + rootNode.size
-            && pos.z < rootNodePos.z + rootNode.size;
-    }
-    
-    private void checkChainDetached(Chain chain) {
-        if (chain.node != rootNode) {
-            throw new RuntimeException("Detached node not actually root node. Size="+chain.node.size);
-        }
-        if (chain.isActive() && !chain.supported && !chain.isTouchingAnySide()) {
-            blockGroupDetached(chain.getPositions(rootNodePos));
+            updateQueue.add(new UnloadUpdate(pos));
         }
     }
     
@@ -205,10 +130,24 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             blockEntityRegistry.getBlockEntityAt(pos).send(new DestroyEvent(EntityRef.NULL, EntityRef.NULL, fallingDamageType));
         }
     }
+
+    @Override
+    public void shutdown() {
+        updateThread.interrupt();
+    }
     
     @Command(shortDescription = "Print debug information relating to FallingBlocks.", helpText = "Validate the current state of the octree of FallingBlocks.")
     public String fallingBlocksDebug() {
-        rootNode.validate();
+        updateQueue.add(new ValidateUpdate());
+        try {
+            synchronized (updatingFinishedMonitor) { // I can't find convenient monitors separate from locks, and Java requires that the lock be acquired before the monitor is usable.
+                while (updateQueue.peek() != null) {
+                    updatingFinishedMonitor.wait();
+                }
+            }
+        } catch (InterruptedException e) {
+            return "Interrupted before validation was completed.";
+        }
         return "Success.";
     }
 }

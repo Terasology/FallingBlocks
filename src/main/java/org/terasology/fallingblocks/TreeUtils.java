@@ -12,6 +12,8 @@ import org.terasology.math.geom.Vector3i;
 import org.terasology.world.WorldProvider;
 import org.terasology.world.block.Block;
 
+import static org.terasology.fallingblocks.Tree.CHUNK_NODE_SIZE;
+
 public class TreeUtils {
     public static final int[] DIRECTIONS = new int[]{-4, -2, -1, 1, 2, 4};
     // Does the block count as solid for the purposes of connectivity?
@@ -19,13 +21,25 @@ public class TreeUtils {
     public static boolean isSolid(Block block) {
         return block.isAttachmentAllowed();
     }
-    
+
+    public static boolean[] extractChunkData(WorldProvider world, Vector3i pos) {
+        boolean[] data = new boolean[CHUNK_NODE_SIZE * CHUNK_NODE_SIZE * CHUNK_NODE_SIZE];
+        for (int x = 0; x < CHUNK_NODE_SIZE; x++) {
+            for (int y = 0; y < CHUNK_NODE_SIZE; y++) {
+                for (int z = 0; z < CHUNK_NODE_SIZE; z++) {
+                    data[(x * CHUNK_NODE_SIZE + y) * CHUNK_NODE_SIZE + z] = isSolid(world.getBlock(pos.x+x, pos.y+y, pos.z+z));
+                }
+            }
+        }
+        return data;
+    }
+
     /**
      * Produce a new node representing the given region.
      */
-    public static Node buildNode(WorldProvider world, int size, Vector3i pos) {
+    public static Node buildNode(boolean[] data, int size, Vector3i pos) {
         if (size == 1) {
-            if (isSolid(world.getBlock(pos))) {
+            if (data[(pos.x * CHUNK_NODE_SIZE + pos.y) * CHUNK_NODE_SIZE + pos.z]) {
                 return new SolidNode(1);
             } else {
                 return EmptyNode.get(1);
@@ -38,7 +52,7 @@ public class TreeUtils {
             for (int cx = 0; cx < 2; cx++) {
                 for (int cy = 0; cy < 2; cy++) {
                     for (int cz = 0; cz < 2; cz++) {
-                        children[i] = buildNode(world, size/2, new Vector3i(cx,cy,cz).scale(size/2).add(pos));
+                        children[i] = buildNode(data, size/2, new Vector3i(cx,cy,cz).scale(size/2).add(pos));
                         empty = empty && children[i] instanceof EmptyNode;
                         solid = solid && children[i] instanceof SolidNode;
                         i++;
