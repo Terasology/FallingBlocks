@@ -26,13 +26,15 @@ public class UnloadUpdate implements Update {
         Pair<Integer, Node> shrinking = tree.rootNode.canShrink();
         if (shrinking.a >= 0) {
             //logger.info("Shrinking root node to octant "+shrinking.a+", size "+shrinking.b.size+".");
+            Set<Chain> oldChains = new HashSet<>(tree.rootNode.getChains());
             tree.rootNode = shrinking.b;
             for (Chain chain : tree.rootNode.getChains()) {
                 TreeUtils.assrt(!(chain.parent instanceof FullChain));
-                Chain parent = chain.parent;
                 chain.parent = null;
-                parent.inactivate(false); // It has to be done in this order so as to not also inactivate the chain itself.
                 chain.touching.clear();
+            }
+            for (Chain chain : oldChains) {
+                chain.inactivate(false); // It has to be done in this order so as to not also inactivate the child chains.
             }
             tree.rootNodePos.add(TreeUtils.octantVector(shrinking.a, tree.rootNode.size));
         } else if (shrinking.a == -1) {

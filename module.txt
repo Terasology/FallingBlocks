@@ -1,9 +1,11 @@
 {
     "id" : "FallingBlocks",
-    "version" : "0.1.5",
+    "version" : "0.1.6",
     "author" : "4Denthusiast",
     "displayName" : "FallingBlocks",
     "description" : "Detects groups of blocks disconnected from the ground to let them fall",
-    "dependencies" : [],
+    "dependencies" : [
+        { "id" : "Health", "minVersion" : "1.0.2" }
+    ],
     "serverSideOnly" : true
 }

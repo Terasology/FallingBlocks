@@ -19,7 +19,7 @@ public class TreeUtils {
     // Does the block count as solid for the purposes of connectivity?
     // I'm avoiding inlining this because I'm not sure if it'll have to be changed at some point.
     public static boolean isSolid(Block block) {
-        return block.isAttachmentAllowed();
+        return !block.isPenetrable();
     }
 
     public static boolean[] extractChunkData(WorldProvider world, Vector3i pos) {

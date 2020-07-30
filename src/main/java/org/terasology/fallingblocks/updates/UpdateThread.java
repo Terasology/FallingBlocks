@@ -42,7 +42,7 @@ public class UpdateThread extends Thread{
                         sleep(finishedTime - startTime);
                     }
                 }
-                if (startTime > previousUpdatedTime + 90) {
+                if (startTime > previousUpdatedTime + 90 && in.isEmpty()) {
                     previousUpdatedTime = startTime;
                     for (Chain chain : updatedChains) {
                         while (chain.parent != null) { // Just in case the root node has expanded since this chain was added to the set.
