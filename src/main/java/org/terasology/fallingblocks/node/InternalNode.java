@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Pair;
+import org.terasology.fallingblocks.Tree;
 import org.terasology.fallingblocks.TreeUtils;
 import org.terasology.math.geom.Vector3i;
 
@@ -26,8 +27,9 @@ public class InternalNode extends Node {
     // The connected components of the solid blocks in this region
     private Set<Chain> chains;
     
-    public InternalNode(int size, Node[] children) {
+    public InternalNode(int size, Node[] children, Tree tree) {
         this.size = size;
+        this.tree = tree;
         this.children = children;
         
         Set<Pair<Integer, Chain>> subChains = new HashSet<>();
@@ -79,7 +81,7 @@ public class InternalNode extends Node {
         Vector3i subPosition = TreeUtils.modVector(pos, size/2);
         Pair<Node, Set<Chain>> childResult = children[octant].removeBlock(subPosition);
         children[octant] = childResult.a;
-        return new Pair<>(chains.isEmpty() ? EmptyNode.get(size) : this, childResult.b);
+        return new Pair<>(chains.isEmpty() ? EmptyNode.get(size, tree) : this, childResult.b);
     }
     
     /**
@@ -159,8 +161,7 @@ public class InternalNode extends Node {
         for (Pair<Integer, Chain> t : nextTouching) {
             TreeUtils.assrt(newChain.parent.baseIsTouching(t.b, t.a));
             TreeUtils.assrt(t.b.baseIsTouching(newChain.parent,-t.a));
-            newChain.parent.touching.add(t);
-            t.b.touching.add(new Pair<>(-t.a, newChain.parent));
+            Chain.addTouching(newChain.parent, t.b, t.a);
             //logger.info("Recording touch, side "+t.a);
         }
 
@@ -173,7 +174,7 @@ public class InternalNode extends Node {
         if (uniformClass && (children[0] instanceof FullNode)) {
             //logger.info("Replacing with "+children[0].getClass()+". size "+size);
             Set<Pair<Integer, Node>> altSiblings = new HashSet<>();
-            for (Pair<Integer, Chain> t : newChain.parent.touching) {
+            for (Pair<Integer, Chain> t : newChain.parent.touching()) {
                 altSiblings.add(new Pair<>(t.a, t.b.node));
             }
             // This larger replacement node may be touching nodes farther away than those in the siblings set, so a new version is necessary. This seems a little dodgy in that it breaks a few of the general assumptions in how insertFullNode works, but it should be okay.
@@ -217,15 +218,14 @@ public class InternalNode extends Node {
         int octant = TreeUtils.octantOfPosition(pos, size);
         Node oldChild = children[octant];
         if (oldChild instanceof UnloadedNode) {
-            children[octant] = TreeUtils.buildExpandedNode(newNode, TreeUtils.modVector(pos, size/2), size/2);
+            children[octant] = TreeUtils.buildExpandedNode(tree, newNode, TreeUtils.modVector(pos, size/2), size/2);
             Chain chain = ((UnloadedNode) oldChild).getChain();
             TreeUtils.assrt(chain.isActive());
             TreeUtils.assrt(chain.parent.isActive());
-            chain.parent.subchains.removeIf((Pair<Integer, Chain> subchain) -> subchain.a == octant);
+            chain.parent.removeSubchain(chain);
             for (Chain childChain : children[octant].getChains()) {
-                childChain.parent = chain.parent;
-                chain.parent.subchains.add(new Pair<>(octant, childChain));
-                for (Pair<Integer, Chain> t : chain.touching) {
+                chain.parent.addSubchain(octant, childChain);
+                for (Pair<Integer, Chain> t : chain.touching()) {
                     childChain.updateTouching(t.b, t.a);
                 }
             }

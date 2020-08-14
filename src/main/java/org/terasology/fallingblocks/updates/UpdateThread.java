@@ -59,7 +59,7 @@ public class UpdateThread extends Thread{
                 }
             }
         } catch (InterruptedException ignored) {
-        } catch (Error e) {
+        } catch (Throwable e) {
             e.printStackTrace();
             throw e;
         }

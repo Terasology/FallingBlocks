@@ -7,26 +7,26 @@ import java.util.*;
 
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Pair;
+import org.terasology.fallingblocks.Tree;
 import org.terasology.math.geom.Vector3i;
 
 /**
  * Nodes containing no solid blocks.
  */
 public class EmptyNode extends Node {
-    // Just an ArrayList would be nicer, but to do that I'd need the log of the size.
-    private static Map<Integer, EmptyNode> nodes = new HashMap<>();
     
-    private EmptyNode(int size) {
+    private EmptyNode(int size, Tree tree) {
         this.size = size;
-        nodes.put(size, this);
+        this.tree = tree;
+        tree.emptyNodes.put(size, this);
     }
     
-    public static EmptyNode get(int size) {
-        EmptyNode result = nodes.get(size);
+    public static EmptyNode get(int size, Tree tree) {
+        EmptyNode result = tree.emptyNodes.get(size);
         if (result != null) {
             return result;
         } else {
-            return new EmptyNode(size);
+            return new EmptyNode(size, tree);
         }
     }
     
@@ -68,10 +68,10 @@ public class EmptyNode extends Node {
     
     private InternalNode equivalentInternalNode() {
         Node[] children = new Node[8];
-        Node child = get(size/2);
+        Node child = get(size/2, tree);
         for (int i = 0; i < 8; i++) {
             children[i] = child;
         }
-        return new InternalNode(size, children);
+        return new InternalNode(size, children, tree);
     }
 }

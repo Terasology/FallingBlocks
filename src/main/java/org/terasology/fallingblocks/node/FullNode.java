@@ -57,17 +57,14 @@ public abstract class FullNode extends Node {
         for (int i = 0; i < 8; i++) {
             children[i] = getSimilar(size/2);
         }
-        InternalNode replacementNode = new InternalNode(size, children);
+        InternalNode replacementNode = new InternalNode(size, children, tree);
         Chain replacementChain = replacementNode.getChains().iterator().next();
         TreeUtils.assrt(replacementNode.getChains().size() == 1);
-        for (Pair<Integer, Chain> touching : chain.touching) {
-            if (touching.b.subchains != null) {
-                for (Pair<Integer, Chain> subchain : touching.b.subchains) {
-                    if (TreeUtils.isOctantOnSide(subchain.a, -touching.a)) {
-                        Chain neighbour = ((FullNode) children[touching.a + subchain.a]).getChain();
-                        subchain.b.touching.add(new Pair<>(-touching.a, neighbour));
-                        neighbour.touching.add(new Pair<>(touching.a, subchain.b));
-                    }
+        for (Pair<Integer, Chain> touching : chain.touching()) {
+            for (Pair<Integer, Chain> subchain : touching.b.subchains()) {
+                if (TreeUtils.isOctantOnSide(subchain.a, -touching.a)) {
+                    Chain neighbour = ((FullNode) children[touching.a + subchain.a]).getChain();
+                    Chain.addTouching(subchain.b, neighbour, -touching.a);
                 }
             }
         }

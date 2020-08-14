@@ -8,6 +8,7 @@ import java.util.*;
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.FullChain;
 import org.terasology.fallingblocks.Pair;
+import org.terasology.fallingblocks.Tree;
 import org.terasology.fallingblocks.TreeUtils;
 import org.terasology.math.geom.Vector3i;
 
@@ -16,8 +17,9 @@ import org.terasology.math.geom.Vector3i;
  */
 public class UnloadedNode extends FullNode {
     
-    public UnloadedNode(int size) {
+    public UnloadedNode(int size, Tree tree) {
         this.size = size;
+        this.tree = tree;
         chain = new FullChain(this, true);
         chains = new HashSet<>();
         chains.add(chain);
@@ -38,7 +40,7 @@ public class UnloadedNode extends FullNode {
     
     @Override
     public FullNode getSimilar(int size) {
-        return new UnloadedNode(size);
+        return new UnloadedNode(size, tree);
     }
     
     public void validate(Stack<Integer> location) {

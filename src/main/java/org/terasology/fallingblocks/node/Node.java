@@ -7,6 +7,7 @@ import java.util.*;
 
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Pair;
+import org.terasology.fallingblocks.Tree;
 import org.terasology.math.geom.Vector3i;
 
 /**
@@ -15,6 +16,7 @@ import org.terasology.math.geom.Vector3i;
  */
 public abstract class Node {
     public int size;
+    public Tree tree;
     
     public abstract Set<Chain> getChains();
     
@@ -26,7 +28,7 @@ public abstract class Node {
     public abstract Pair<Node, Set<Chain>> removeBlock(Vector3i pos);
     
     public Pair<Node, Chain> addBlock(Vector3i pos) {
-        Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> result = insertFullNode(pos, new SolidNode(1), new HashSet<>());
+        Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> result = insertFullNode(pos, new SolidNode(1, tree), new HashSet<>());
         return new Pair<>(result.a, result.b.a);
     }
     
@@ -82,7 +84,7 @@ public abstract class Node {
      * Replace something else with an UnloadedNode.
      */
     public Pair<Node, Chain> removeChunk(Vector3i pos, int chunkSize) {
-        Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> result = insertFullNode(pos, new UnloadedNode(chunkSize), new HashSet<>());
+        Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> result = insertFullNode(pos, new UnloadedNode(chunkSize, tree), new HashSet<>());
         return new Pair<>(result.a, result.b.a);
     }
     

@@ -8,14 +8,16 @@ import java.util.*;
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.FullChain;
 import org.terasology.fallingblocks.Pair;
+import org.terasology.fallingblocks.Tree;
 import org.terasology.math.geom.Vector3i;
 
 /**
  * Nodes full of solid blocks.
  */
 public class SolidNode extends FullNode {
-    public SolidNode(int size) {
+    public SolidNode(int size, Tree tree) {
         this.size = size;
+        this.tree = tree;
         chain = new FullChain(this, false);
         chains = new HashSet<>(1);
         chains.add(chain);
@@ -23,7 +25,7 @@ public class SolidNode extends FullNode {
     
     @Override
     public FullNode getSimilar(int size) {
-        return new SolidNode(size);
+        return new SolidNode(size, tree);
     }
     
     /**
@@ -37,9 +39,9 @@ public class SolidNode extends FullNode {
     @Override
     public Pair<Node, Set<Chain>> removeBlock(Vector3i pos) {
         if (size == 1) {
-            chain.parent.subchains.removeIf(sc -> sc.b == chain);
+            chain.parent.removeSubchain(chain);
             chain.inactivate(false);
-            return new Pair<>(EmptyNode.get(size), chain.parent.checkConnectivity());
+            return new Pair<>(EmptyNode.get(size, tree), chain.parent.checkConnectivity());
         } else {
             return equivalentInternalNode().removeBlock(pos);
         }

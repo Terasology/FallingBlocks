@@ -31,7 +31,6 @@ public class UnloadUpdate implements Update {
             for (Chain chain : tree.rootNode.getChains()) {
                 TreeUtils.assrt(!(chain.parent instanceof FullChain));
                 chain.parent = null;
-                chain.touching.clear();
             }
             for (Chain chain : oldChains) {
                 chain.inactivate(false); // It has to be done in this order so as to not also inactivate the child chains.

@@ -37,12 +37,12 @@ public class TreeUtils {
     /**
      * Produce a new node representing the given region.
      */
-    public static Node buildNode(boolean[] data, int size, Vector3i pos) {
+    public static Node buildNode(Tree tree, boolean[] data, int size, Vector3i pos) {
         if (size == 1) {
             if (data[(pos.x * CHUNK_NODE_SIZE + pos.y) * CHUNK_NODE_SIZE + pos.z]) {
-                return new SolidNode(1);
+                return new SolidNode(1, tree);
             } else {
-                return EmptyNode.get(1);
+                return EmptyNode.get(1, tree);
             }
         } else {
             Node[] children = new Node[8];
@@ -52,7 +52,7 @@ public class TreeUtils {
             for (int cx = 0; cx < 2; cx++) {
                 for (int cy = 0; cy < 2; cy++) {
                     for (int cz = 0; cz < 2; cz++) {
-                        children[i] = buildNode(data, size/2, new Vector3i(cx,cy,cz).scale(size/2).add(pos));
+                        children[i] = buildNode(tree, data, size/2, new Vector3i(cx,cy,cz).scale(size/2).add(pos));
                         empty = empty && children[i] instanceof EmptyNode;
                         solid = solid && children[i] instanceof SolidNode;
                         i++;
@@ -60,11 +60,11 @@ public class TreeUtils {
                 }
             }
             if (empty) {
-                return EmptyNode.get(size);
+                return EmptyNode.get(size, tree);
             } else if (solid) {
-                return new SolidNode(size);
+                return new SolidNode(size, tree);
             } else {
-                return new InternalNode(size, children);
+                return new InternalNode(size, children, tree);
             }
         }
     }
@@ -72,11 +72,11 @@ public class TreeUtils {
     /**
      * Produce a new node that is all unloaded except for one preexisting child node.
      */
-    public static Node buildExpandedNode(Node old, Vector3i pos, int size) {
+    public static Node buildExpandedNode(Tree tree, Node old, Vector3i pos, int size) {
         if (old.size == size) {
             return old;
         } else if (old.size < size/2) {
-            old = buildExpandedNode(old, modVector(pos, size/2), size/2);
+            old = buildExpandedNode(tree, old, modVector(pos, size/2), size/2);
         }
         Node[] children = new Node[8];
         int octant = octantOfPosition(pos, size);
@@ -84,10 +84,10 @@ public class TreeUtils {
             if (i == octant) {
                 children[i] = old;
             } else {
-                children[i] = new UnloadedNode(size/2);
+                children[i] = new UnloadedNode(size/2, tree);
             }
         }
-        return new InternalNode(size, children);
+        return new InternalNode(size, children, tree);
     }
     
     /**

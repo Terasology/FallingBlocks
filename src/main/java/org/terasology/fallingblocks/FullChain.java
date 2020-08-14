@@ -43,8 +43,7 @@ public class FullChain extends Chain {
     
     public boolean updateTouching(Chain sibling, int direction) {
         if (baseIsTouching(sibling, direction)) {
-            touching.add(new Pair(direction, sibling));
-            sibling.touching.add(new Pair(-direction, this));
+            Chain.addTouching(this, sibling, direction);
             return true;
         } else {
             return false;
@@ -103,7 +102,7 @@ public class FullChain extends Chain {
         TreeUtils.assrt(node.getChains().contains(this));
         if (parent != null) {
             int found = 0;
-            for (Pair<Integer, Chain> subchain : parent.subchains) {
+            for (Pair<Integer, Chain> subchain : parent.subchains()) {
                 if (subchain.b == this) {
                     found++;
                 }
@@ -112,13 +111,13 @@ public class FullChain extends Chain {
             TreeUtils.assrt(found <= 1);
             TreeUtils.assrt(parent.node.size == node.size * 2);
         }
-        TreeUtils.assrt(subchains == null);
+        TreeUtils.assrt(subchainId == -1);
         if (supported) {
             TreeUtils.assrt(node instanceof UnloadedNode);
         } else {
             TreeUtils.assrt(node instanceof SolidNode);
         }
-        for (Pair<Integer, Chain> t : touching) {
+        for (Pair<Integer, Chain> t : touching()) {
             TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction "+t.a+" size "+node.size+" location "+location);
             TreeUtils.assrt(t.b.isTouching(this, -t.a));
             TreeUtils.assrt(node.size == t.b.node.size);

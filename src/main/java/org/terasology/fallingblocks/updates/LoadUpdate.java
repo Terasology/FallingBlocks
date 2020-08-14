@@ -22,7 +22,7 @@ public class LoadUpdate implements Update {
 
     @Override
     public Set<Chain> execute(Tree tree) {
-        Node node = TreeUtils.buildNode(data, Tree.CHUNK_NODE_SIZE, new Vector3i());
+        Node node = TreeUtils.buildNode(tree, data, Tree.CHUNK_NODE_SIZE, new Vector3i());
         if (tree.rootNode == null) {
             //logger.info("Starting new root node.");
             tree.rootNode = node;
@@ -33,7 +33,7 @@ public class LoadUpdate implements Update {
             Vector3i relativePos = TreeUtils.modVector(new Vector3i(tree.rootNodePos).add(Tree.ROOT_OFFSET, Tree.ROOT_OFFSET, Tree.ROOT_OFFSET), tree.rootNode.size * 2);
             Vector3i newRootNodePos = new Vector3i(tree.rootNodePos).sub(relativePos);
             //logger.info("Expanding root node from "+rootNodePos+", "+rootNode.size+" to "+newRootNodePos);
-            tree.rootNode = TreeUtils.buildExpandedNode(tree.rootNode, relativePos, tree.rootNode.size * 2);
+            tree.rootNode = TreeUtils.buildExpandedNode(tree, tree.rootNode, relativePos, tree.rootNode.size * 2);
             tree.rootNodePos = newRootNodePos;
         }
         TreeUtils.assrt(tree.rootNode != node);
