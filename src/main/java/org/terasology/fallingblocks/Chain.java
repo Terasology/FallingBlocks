@@ -206,7 +206,6 @@ public class Chain {
      * Returns the top-level chains (i.e. most distant ancestor) resulting from this split.
      */
     public Set<Chain> checkConnectivity() {
-        logger.debug("Checking connectivity, size {}, hash {}", node.size, hashCode());
         Set<Chain> result = new HashSet<>();
         Set<Pair<Integer, Chain>> unprocessedSubchains = new HashSet<>();
         for (Pair<Integer, Chain> sc : subchains()) {
@@ -232,11 +231,9 @@ public class Chain {
                 }
             }
             if (result.isEmpty() && unprocessedSubchains.isEmpty()) {
-                logger.debug("Fully connected.");
                 result.add(this);
             } else {
                 Chain fragment = new Chain(connectedComponent, node);
-                logger.debug("Fragment {}", fragment.hashCode());
                 result.add(fragment);
                 for (Pair<Integer, Chain> touchingThis : touching()) {
                     if (fragment.baseIsTouching(touchingThis.b, touchingThis.a)) {
@@ -260,13 +257,10 @@ public class Chain {
             int i = 0;
             while (i < numTouching()) {
                 Chain touching = getTouching(i);
-                logger.debug("Checking touching {} direction {}", touching.hashCode(), getTouchingDirection(i));
                 if (!baseIsTouching(touching, getTouchingDirection(i))) {
-                    logger.debug("Removed.");
                     removeTouching(touching);
                     touching.removeTouching(this);
                 } else {
-                    logger.debug("Kept.");
                     i++;
                 }
             }
@@ -368,19 +362,16 @@ public class Chain {
         int size = tree.subchains.expand(subchainId, 1);
         tree.subchains.set(subchainId, size - 1, octant, child);
         child.parent = this;
-        for (Object ignored : subchains()) {} // Check the integrity of the IntPairSetHeap, assuming the test version is in use.
     }
 
     /**
      * @return the corresponding octant
      */
     public int removeSubchain(Chain child) {
-        for (Object ignored : subchains()) {} // Check the integrity of the IntPairSetHeap, assuming the test version is in use.
         int i = 0;
         for (Pair<Integer, Chain> t : subchains()) {
             if (t.b == child) {
                 tree.subchains.remove(subchainId, i);
-                for (Object ignored : subchains()) {} // Check the integrity of the IntPairSetHeap, assuming the test version is in use.
                 return t.a;
             } else {
                 i++;
@@ -413,17 +404,13 @@ public class Chain {
         }
         a.tree.touching.set(a.touchingId, a.tree.touching.expand(a.touchingId, 1) - 1,  direction, b);
         b.tree.touching.set(b.touchingId, b.tree.touching.expand(b.touchingId, 1) - 1,  -direction, a);
-        for (Object ignored : a.touching()) {} // Check the integrity of the IntPairSetHeap, assuming the test version is in use.
-        for (Object ignored : b.touching()) {}
     }
 
     public void removeTouching(Chain touching) {
-        for (Object ignored : touching()) {} // Check the integrity of the IntPairSetHeap, assuming the test version is in use.
         int i = 0;
         for (Pair<Integer, Chain> t : touching()) {
             if (t.b == touching) {
                 tree.touching.remove(touchingId, i);
-                for (Object ignored : touching()) {} // Check the integrity of the IntPairSetHeap, assuming the test version is in use.
                 return;
             } else {
                 i++;
@@ -443,11 +430,6 @@ public class Chain {
             result += subchain.toString();
         }
         return result + "]";
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        TreeUtils.assrt(!isActive());
     }
 
     public void validate(Stack<Integer> location) {

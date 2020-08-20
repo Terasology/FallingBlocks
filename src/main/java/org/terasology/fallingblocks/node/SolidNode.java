@@ -42,7 +42,6 @@ public class SolidNode extends FullNode {
     
     @Override
     public Pair<Node, Set<Chain>> removeBlock(Vector3i pos) {
-        logger.debug("Removing block from SolidNode size "+size+".");
         if (size == 1) {
             chain.parent.removeSubchain(chain);
             chain.inactivate(false);

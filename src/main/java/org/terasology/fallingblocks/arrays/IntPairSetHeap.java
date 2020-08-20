@@ -8,15 +8,11 @@ import org.terasology.fallingblocks.Pair;
 
 /**
  * A set of sets of int-object-pairs, where each of the (outer) sets has a fixed int label.
- * I really ought to write some unit tests for this at some point.
  */
 public class IntPairSetHeap<T> {
     private final IntPairArrayList<T> list = new IntPairArrayList<>();
     private final SpaceTracker spaceTracker = new SpaceTracker();
     private final int binSize;
-
-    private final Map<Integer, IntPairSetIterator> busyKeys = new HashMap<>();
-    private int maxSize; // For debugging purposes, check on the maximum size any of the sets have reached.
 
     public IntPairSetHeap(int binSize) {
         this.binSize = binSize;
@@ -30,7 +26,6 @@ public class IntPairSetHeap<T> {
     }
 
     public void remove(int key) {
-        busyKeys.remove(key);
         for (int binIndex = key; binIndex != -1; binIndex = getNext(binIndex)) {
             spaceTracker.remove(binIndex);
             for (int i = 0; i < binSize; i++) {
@@ -63,10 +58,8 @@ public class IntPairSetHeap<T> {
      * @return The new size
      */
     public int expand(int key, int n) {
-        busyKeys.remove(key);
         int oldSize = getSize(key);
         int newSize = oldSize + n;
-        maxSize = Math.max(newSize, maxSize);
         setSize(key, newSize);
         // The number of bins is 1 + (size - 1) / binSize.
         if ((newSize - 1) / binSize != (oldSize - 1) / binSize) {
@@ -135,7 +128,6 @@ public class IntPairSetHeap<T> {
     }
 
     private int getAddress(int key, int i) {
-        busyKeys.remove(key);
         if (key == -1) {
             throw new NullPointerException();
         } else if (i < 0) {
@@ -164,7 +156,6 @@ public class IntPairSetHeap<T> {
             if (key == -1) {
                 remainingSize = 0;
             } else {
-                busyKeys.put(key, this);
                 currentAddress = key * (binSize + 2);
                 remainingSize = getSize(key);
             }
@@ -177,9 +168,6 @@ public class IntPairSetHeap<T> {
 
         @Override
         public Pair<Integer, T> next() {
-            /*if (busyKeys.get(key) != this) {
-                throw new ConcurrentModificationException();
-            }*/
             Pair<Integer, T> result = list.get(currentAddress);
             currentAddress++;
             if (currentAddress % (binSize + 2) == binSize) {

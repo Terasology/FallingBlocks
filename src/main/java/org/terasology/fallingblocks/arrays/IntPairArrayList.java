@@ -39,9 +39,6 @@ public class IntPairArrayList<T> {
         if (i < 0 || i >= size) {
             throw new ArrayIndexOutOfBoundsException(i);
         }
-        if (bs[i] == null) {
-            throw new NullPointerException();
-        }
         return new Pair<>(as[i], (T) bs[i]);
     }
 

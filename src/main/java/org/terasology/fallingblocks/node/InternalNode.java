@@ -75,7 +75,6 @@ public class InternalNode extends Node {
     @Override
     public Pair<Node, Set<Chain>> removeBlock(Vector3i pos) {
         int octant = TreeUtils.octantOfPosition(pos, size);
-        logger.debug("Removing block from InternalNode size "+size+" octant "+octant);
         Vector3i subPosition = TreeUtils.modVector(pos, size/2);
         Pair<Node, Set<Chain>> childResult = children[octant].removeBlock(subPosition);
         children[octant] = childResult.a;

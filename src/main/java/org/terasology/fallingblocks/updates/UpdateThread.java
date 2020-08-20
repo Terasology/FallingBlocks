@@ -38,9 +38,6 @@ public class UpdateThread extends Thread{
                 if (update != null) {
                     updatedChains.addAll(update.execute(tree));
                     long finishedTime = System.currentTimeMillis();
-                    if (update instanceof RemovalUpdate || update instanceof AdditionUpdate) {
-                        //tree.rootNode.validate();
-                    }
                     if (finishedTime > startTime - 10) {
                         sleep(finishedTime - startTime);
                     }
