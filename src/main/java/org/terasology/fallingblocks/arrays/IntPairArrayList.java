@@ -93,14 +93,10 @@ public class IntPairArrayList<T> {
             int arraySize = (int) (size * EXPANSION_FACTOR);
             int[] oldAs = as;
             Object[] oldBs = bs;
-            try {
-                as = new int[arraySize];
-                bs = new Object[arraySize];
-                System.arraycopy(oldAs, 0, as, 0, oldAs.length);
-                System.arraycopy(oldBs, 0, bs, 0, oldBs.length);
-            } catch (OutOfMemoryError e) {
-                throw e;
-            }
+            as = new int[arraySize];
+            bs = new Object[arraySize];
+            System.arraycopy(oldAs, 0, as, 0, oldAs.length);
+            System.arraycopy(oldBs, 0, bs, 0, oldBs.length);
         }
     }
 }

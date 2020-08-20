@@ -62,7 +62,7 @@ public abstract class FullNode extends Node {
         TreeUtils.assrt(replacementNode.getChains().size() == 1);
         for (Pair<Integer, Chain> touching : chain.touching()) {
             for (Pair<Integer, Chain> subchain : touching.b.subchains()) {
-                if (TreeUtils.isOctantOnSide(subchain.a, -touching.a)) {
+                if (TreeUtils.isOctantOnSide(subchain.a, -touching.a) && subchain.b.isTouching(-touching.a)) {
                     Chain neighbour = ((FullNode) children[touching.a + subchain.a]).getChain();
                     Chain.addTouching(subchain.b, neighbour, -touching.a);
                 }

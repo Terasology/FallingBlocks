@@ -320,4 +320,18 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         }
         return "Success.";
     }
+    
+    @Command(shortDescription = "Display the status of FallingBlocks's update thread.")
+    public String fallingBlocksStatus() {
+        if (!updateThread.isAlive()) {
+            return "FallingBlocks update thread already dead.";
+        } else {
+            int updates = updateQueue.size();
+            if (updates == 0) {
+                return "Updating finished.";
+            } else {
+                return "Updates left: "+updates;
+            }
+        }
+    }
 }

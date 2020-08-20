@@ -16,6 +16,7 @@ public class IntPairSetHeap<T> {
     private final int binSize;
 
     private final Map<Integer, IntPairSetIterator> busyKeys = new HashMap<>();
+    private int maxSize; // For debugging purposes, check on the maximum size any of the sets have reached.
 
     public IntPairSetHeap(int binSize) {
         this.binSize = binSize;
@@ -65,6 +66,7 @@ public class IntPairSetHeap<T> {
         busyKeys.remove(key);
         int oldSize = getSize(key);
         int newSize = oldSize + n;
+        maxSize = Math.max(newSize, maxSize);
         setSize(key, newSize);
         // The number of bins is 1 + (size - 1) / binSize.
         if ((newSize - 1) / binSize != (oldSize - 1) / binSize) {
@@ -152,7 +154,7 @@ public class IntPairSetHeap<T> {
         return this.new IntPairSetIterator(key);
     }
 
-    private class IntPairSetIterator implements Iterator<Pair<Integer, T>>, Iterable<Pair<Integer, T>> {
+    protected class IntPairSetIterator implements Iterator<Pair<Integer, T>>, Iterable<Pair<Integer, T>> {
         private int key;
         private int currentAddress;
         private int remainingSize;

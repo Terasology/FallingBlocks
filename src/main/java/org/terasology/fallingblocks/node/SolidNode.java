@@ -5,6 +5,8 @@ package org.terasology.fallingblocks.node;
 
 import java.util.*;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.FullChain;
 import org.terasology.fallingblocks.Pair;
@@ -15,6 +17,8 @@ import org.terasology.math.geom.Vector3i;
  * Nodes full of solid blocks.
  */
 public class SolidNode extends FullNode {
+    private static final Logger logger = LoggerFactory.getLogger(SolidNode.class);
+
     public SolidNode(int size, Tree tree) {
         this.size = size;
         this.tree = tree;
@@ -38,6 +42,7 @@ public class SolidNode extends FullNode {
     
     @Override
     public Pair<Node, Set<Chain>> removeBlock(Vector3i pos) {
+        logger.debug("Removing block from SolidNode size "+size+".");
         if (size == 1) {
             chain.parent.removeSubchain(chain);
             chain.inactivate(false);

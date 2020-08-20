@@ -62,11 +62,8 @@ public class InternalNode extends Node {
             }
             subChains.removeAll(rawChain);
             
-            Chain chain = new Chain(rawChain, null, this);
+            Chain chain = new Chain(rawChain, this);
             chains.add(chain);
-            for (Pair<Integer, Chain> sc : rawChain) {
-                sc.b.parent = chain;
-            }
         }
     }
     
@@ -78,6 +75,7 @@ public class InternalNode extends Node {
     @Override
     public Pair<Node, Set<Chain>> removeBlock(Vector3i pos) {
         int octant = TreeUtils.octantOfPosition(pos, size);
+        logger.debug("Removing block from InternalNode size "+size+" octant "+octant);
         Vector3i subPosition = TreeUtils.modVector(pos, size/2);
         Pair<Node, Set<Chain>> childResult = children[octant].removeBlock(subPosition);
         children[octant] = childResult.a;

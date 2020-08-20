@@ -62,6 +62,10 @@ public class TreeUtils {
             if (empty) {
                 return EmptyNode.get(size, tree);
             } else if (solid) {
+                for (Node child : children) {
+                    // There are no references to these, but they still need to have their IDs in the IntPairSetHeaps revoked.
+                    ((SolidNode) child).getChain().inactivate(false);
+                }
                 return new SolidNode(size, tree);
             } else {
                 return new InternalNode(size, children, tree);

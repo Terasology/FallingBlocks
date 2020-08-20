@@ -17,7 +17,7 @@ public class Pair<A,B>{
     }
     
     public boolean equals(Object other) {
-        if(other == null || other.getClass() != Pair.class) {
+        if (other == null || other.getClass() != Pair.class) {
             return false;
         } else {
             Pair that = (Pair) other;
@@ -27,6 +27,6 @@ public class Pair<A,B>{
     }
     
     public String toString() {
-        return "("+a.toString()+", "+b.toString()+")";
+        return "("+(a == null ? "null" : a.toString())+", "+(b == null ? "null" : b.toString())+")";
     }
 }

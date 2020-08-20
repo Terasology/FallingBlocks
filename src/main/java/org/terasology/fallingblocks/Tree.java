@@ -3,13 +3,10 @@
 
 package org.terasology.fallingblocks;
 
-import com.bulletphysics.util.IntArrayList;
 import java.util.*;
 
-import org.terasology.fallingblocks.arrays.IntPairArrayList;
 import org.terasology.fallingblocks.arrays.IntPairSetHeap;
 import org.terasology.fallingblocks.arrays.IntPairSetHeapTest;
-import org.terasology.fallingblocks.arrays.SpaceTracker;
 import org.terasology.fallingblocks.node.EmptyNode;
 import org.terasology.fallingblocks.node.Node;
 import org.terasology.math.geom.Vector3i;
@@ -25,10 +22,10 @@ public class Tree {
     public final Map<Integer, EmptyNode> emptyNodes = new HashMap<>();
 
     // For all of the chains, the chains in sub-nodes that compose them, and the octants they're in
-    IntPairSetHeap<Chain> subchains = new IntPairSetHeap<>(8);
+    IntPairSetHeap<Chain> subchains = new IntPairSetHeapTest<>(8);
 
     // For all the chains, the chains in adjacent nodes of the same size that they touch, and the directions to them.
-    IntPairSetHeap<Chain> touching = new IntPairSetHeap<>(6);
+    IntPairSetHeap<Chain> touching = new IntPairSetHeapTest<>(6);
 
     public boolean isWithinRootNode(Vector3i pos) {
         return rootNodePos != null

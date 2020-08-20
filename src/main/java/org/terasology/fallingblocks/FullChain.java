@@ -17,7 +17,7 @@ public class FullChain extends Chain {
     // subchains it not used, so it is left as null. I suspect there's some better way to arrange the classes, perhaps with a common abstract superclass like Node, that avoids having superfluous class members.
     
     public FullChain(FullNode node, boolean supported) {
-        super(null, null, node);
+        super(null, node);
         this.supported = supported;
     }
     
