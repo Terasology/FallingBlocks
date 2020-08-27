@@ -257,6 +257,20 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                         blockRegionsSeen.add(oldEntity);
                     }
                 }
+                
+                Block replacedBlock = worldProvider.getBlock(movedPos);
+                if (replacedBlock.isLiquid()) {
+                    Vector3i placementPos = new Vector3i(movedPos);
+                    while (blockChanges.containsKey(placementPos) || (worldProvider.getBlock(placementPos) != air && !positions.contains(placementPos))) {
+                        placementPos.addY(1);
+                    }
+                    localExtraData = new int[extraDataCount];
+                    for (int i = 0; i < extraDataCount; i++) {
+                        localExtraData[i] = worldProvider.getExtraData(i, movedPos);
+                    }
+                    blockChanges.put(placementPos, replacedBlock);
+                    extraData.add(new Pair<>(placementPos, localExtraData));
+                }
             }
             Map<Vector3i, Block> blockRemovals = new HashMap<>();
             for (Vector3i pos : positions) {
