@@ -152,13 +152,32 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     }
     
     private void blockGroupDetached(Set<Vector3i> positions) {
-        //logger.info("Block group falling.");
-        if (detachByMoving) {
-            float totalMass = 0;
-            for (Vector3i pos : positions) {
-                totalMass += worldProvider.getBlock(pos).getMass();
+        logger.info("Block group falling.");
+        float totalMass = 0;
+        float totalLevitation = 0;
+        for (Vector3i pos : positions) {
+            Block block = worldProvider.getBlock(pos);
+            totalMass += block.getMass();
+            Optional<Prefab> blockPrefab = block.getPrefab();
+            if (blockPrefab.isPresent()) { // Can't use ifPresent because the local variable totalLevitation is accessed.
+                logger.info("Has prefab.");
+                LevitatingBlockComponent levitation = blockPrefab.get().getComponent(LevitatingBlockComponent.class);
+                if (levitation != null) {
+                    logger.info("Has levitation.");
+                    if (levitation.strength == 0) {
+                        totalLevitation = 1f / 0f;
+                    } else {
+                        totalLevitation += levitation.strength;
+                    }
+                }
             }
+        }
+        logger.info("Levitation {}, mass {}", totalLevitation, totalMass);
+        if (totalLevitation >= totalMass) {
+            return;
+        }
 
+        if (detachByMoving) {
             Map<Vector3i, List<EntityRef>> allEntities = new HashMap<>();
             for (EntityRef entity : entityManager.getEntitiesWith(LocationComponent.class, HealthComponent.class)) {
                 // Ideally this would take into account the size of the object too, but I don't know where to find that.

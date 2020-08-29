@@ -1,0 +1,11 @@
+{
+    "displayName": "Levitation platform",
+    "entity": {
+        "prefab": "FallingBlocks:HoverBlock"
+    },
+    "tiles": {
+        "bottom": "FallingBlocks:Hover_bottom",
+        "sides": "FallingBlocks:Hover_sides",
+        "top": "FallingBlocks:Hover_top"
+    }
+}
