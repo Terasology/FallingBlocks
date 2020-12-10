@@ -271,7 +271,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                         }
                         oldComponents.put(movedPos, components);
                     } else if (regionComponent != null && !blockRegionsSeen.contains(oldEntity)) {
-                        regionComponent.region = regionComponent.region.move(new Vector3i(0, -distance, 0));
+                        regionComponent.region.translate(0, -distance, 0);
                         oldEntity.saveComponent(regionComponent);
                         blockRegionsSeen.add(oldEntity);
                     }
