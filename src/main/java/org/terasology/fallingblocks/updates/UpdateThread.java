@@ -3,12 +3,14 @@
 
 package org.terasology.fallingblocks.updates;
 
-import java.util.*;
-import java.util.concurrent.*;
-
+import org.joml.Vector3i;
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Tree;
-import org.terasology.math.geom.Vector3i;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 public class UpdateThread extends Thread{
     private final BlockingQueue<Update> in;

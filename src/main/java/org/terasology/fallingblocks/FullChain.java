@@ -3,12 +3,14 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.*;
-
+import org.joml.Vector3i;
 import org.terasology.fallingblocks.node.FullNode;
 import org.terasology.fallingblocks.node.SolidNode;
 import org.terasology.fallingblocks.node.UnloadedNode;
-import org.terasology.math.geom.Vector3i;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Stack;
 
 /**
  * The connected component within a FullNode, filling its space.

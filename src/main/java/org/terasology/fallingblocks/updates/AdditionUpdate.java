@@ -3,15 +3,16 @@
 
 package org.terasology.fallingblocks.updates;
 
-import java.util.*;
-
+import org.joml.Vector3i;
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Pair;
 import org.terasology.fallingblocks.Tree;
 import org.terasology.fallingblocks.node.Node;
-import org.terasology.math.geom.Vector3i;
 
-public class AdditionUpdate implements Update{
+import java.util.Collections;
+import java.util.Set;
+
+public class AdditionUpdate implements Update {
     Vector3i pos;
 
     public AdditionUpdate(Vector3i pos) {

@@ -3,14 +3,16 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.*;
-
+import org.joml.Vector3i;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.terasology.fallingblocks.node.FullNode;
 import org.terasology.fallingblocks.node.InternalNode;
 import org.terasology.fallingblocks.node.Node;
-import org.terasology.math.geom.Vector3i;
+
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.Stack;
 
 /**
  * A connected component of solid blocks within an octree node.

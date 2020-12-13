@@ -3,14 +3,16 @@
 
 package org.terasology.fallingblocks.node;
 
-import java.util.*;
-
+import org.joml.Vector3i;
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.FullChain;
 import org.terasology.fallingblocks.Pair;
 import org.terasology.fallingblocks.Tree;
 import org.terasology.fallingblocks.TreeUtils;
-import org.terasology.math.geom.Vector3i;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Stack;
 
 /**
  * Nodes to fill in the spaces in the octree where the chunks aren't actually loaded.
