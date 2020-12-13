@@ -3,13 +3,13 @@
 
 package org.terasology.fallingblocks.updates;
 
+import org.joml.Vector3i;
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Tree;
 import org.terasology.fallingblocks.TreeUtils;
 import org.terasology.fallingblocks.node.Node;
-import org.terasology.math.geom.Vector3i;
 
-import java.util.*;
+import java.util.Set;
 
 public class LoadUpdate implements Update {
     boolean[] data;

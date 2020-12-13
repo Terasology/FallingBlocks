@@ -3,20 +3,17 @@
 
 package org.terasology.fallingblocks;
 
-import java.util.*;
-import java.util.concurrent.*;
-
-import org.joml.RoundingMode;
+import org.joml.Vector3f;
+import org.joml.Vector3i;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.terasology.entitySystem.Component;
 import org.terasology.entitySystem.entity.EntityManager;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.entitySystem.event.ReceiveEvent;
 import org.terasology.entitySystem.metadata.ComponentMetadata;
-import org.terasology.entitySystem.prefab.PrefabManager;
 import org.terasology.entitySystem.prefab.Prefab;
+import org.terasology.entitySystem.prefab.PrefabManager;
 import org.terasology.entitySystem.systems.BaseComponentSystem;
 import org.terasology.entitySystem.systems.RegisterMode;
 import org.terasology.entitySystem.systems.RegisterSystem;
@@ -25,8 +22,8 @@ import org.terasology.fallingblocks.updates.AdditionUpdate;
 import org.terasology.fallingblocks.updates.LoadUpdate;
 import org.terasology.fallingblocks.updates.RemovalUpdate;
 import org.terasology.fallingblocks.updates.UnloadUpdate;
-import org.terasology.fallingblocks.updates.UpdateThread;
 import org.terasology.fallingblocks.updates.Update;
+import org.terasology.fallingblocks.updates.UpdateThread;
 import org.terasology.fallingblocks.updates.ValidateUpdate;
 import org.terasology.input.cameraTarget.CameraTargetSystem;
 import org.terasology.logic.characters.CharacterMovementComponent;
@@ -37,9 +34,7 @@ import org.terasology.logic.health.EngineDamageTypes;
 import org.terasology.logic.health.HealthComponent;
 import org.terasology.logic.health.event.DoDamageEvent;
 import org.terasology.logic.location.LocationComponent;
-import org.terasology.math.AABB;
-import org.terasology.math.geom.Vector3i;
-import org.terasology.math.geom.Vector3f;
+import org.terasology.math.JomlUtil;
 import org.terasology.network.NetworkComponent;
 import org.terasology.registry.In;
 import org.terasology.world.BlockEntityRegistry;
@@ -50,27 +45,37 @@ import org.terasology.world.block.BlockComponent;
 import org.terasology.world.block.BlockManager;
 import org.terasology.world.block.regions.BlockRegionComponent;
 import org.terasology.world.chunks.ChunkConstants;
-import org.terasology.world.chunks.event.OnChunkLoaded;
 import org.terasology.world.chunks.event.BeforeChunkUnload;
+import org.terasology.world.chunks.event.OnChunkLoaded;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 @RegisterSystem(RegisterMode.AUTHORITY)
 public class FallingBlockSystem extends BaseComponentSystem implements UpdateSubscriberSystem {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(FallingBlockSystem.class);
 
     @In
     private BlockManager blockManager;
     private Block air;
-    
+
     @In
     private WorldProvider worldProvider;
-    
+
     @In
     private BlockEntityRegistry blockEntityRegistry;
 
     @In
     private EntityManager entityManager;
-    
+
     @In
     private PrefabManager prefabManager;
     private Prefab fallingDamageType;
@@ -83,7 +88,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
 
     @In
     private CameraTargetSystem cameraTarget;
-    
+
     @Override
     public void initialise() {
         fallingDamageType = prefabManager.getPrefab("fallingBlocks:blockFallingDamage");
@@ -94,7 +99,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         updateThread = new UpdateThread(updateQueue, detachedChainQueue, updatingFinishedMonitor);
         updateThread.start();
     }
-    
+
     // TODO: Maybe make this a WorldChangeListener instead? Compare efficiency. Aggregate changes into batches (should improve efficiency and avoid confusing reentrant behaviour when falling blocks cause block updates).
     /**
      * Called every time a block is changed.
@@ -113,7 +118,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             updateQueue.add(new AdditionUpdate(event.getBlockPosition()));
         }
     }
-    
+
     /**
      * Called once per tick.
      */
@@ -127,30 +132,30 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             positions = detachedChainQueue.poll();
         }
     }
-    
+
     @ReceiveEvent
     public void chunkLoaded(OnChunkLoaded event, EntityRef entity) {
-        Vector3i chunkPos = event.getChunkPos();
+        Vector3i chunkPos = JomlUtil.from(event.getChunkPos());
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for (int y = 0; y < ChunkConstants.SIZE_Y; y += Tree.CHUNK_NODE_SIZE) {
-            Vector3i pos = new Vector3i(chunkPos).addY(y);
+            Vector3i pos = new Vector3i(chunkPos).add(0, y, 0);
             //logger.info("Loading chunk at "+pos+".");
             boolean[] chunkData = TreeUtils.extractChunkData(worldProvider, pos);
             updateQueue.add(new LoadUpdate(chunkData, pos));
         }
     }
-    
+
     @ReceiveEvent
     public void chunkUnloaded(BeforeChunkUnload event, EntityRef entity) {
-        Vector3i chunkPos = event.getChunkPos();
+        Vector3i chunkPos = JomlUtil.from(event.getChunkPos());
         chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
         for (int y = 0; y < ChunkConstants.SIZE_Y; y += Tree.CHUNK_NODE_SIZE) {
-            Vector3i pos = new Vector3i(chunkPos).addY(y);
+            Vector3i pos = new Vector3i(chunkPos).add(0, y, 0);
             //logger.info("Unloading chunk at "+pos+".");
             updateQueue.add(new UnloadUpdate(pos));
         }
     }
-    
+
     private void blockGroupDetached(Set<Vector3i> positions) {
         logger.info("Block group falling.");
         float totalMass = 0;
@@ -181,7 +186,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             Map<Vector3i, List<EntityRef>> allEntities = new HashMap<>();
             for (EntityRef entity : entityManager.getEntitiesWith(LocationComponent.class, HealthComponent.class)) {
                 // Ideally this would take into account the size of the object too, but I don't know where to find that.
-                Vector3f floatPos = new Vector3f(entity.getComponent(LocationComponent.class).getWorldPosition());
+                Vector3f floatPos = entity.getComponent(LocationComponent.class).getWorldPosition(new Vector3f());
                 float height = getEntityHeight(entity);
                 // The use of Math.floor rather than just casting is necessary to get the correct rounding towards negative infinity behaviour.
                 for (int y = (int) Math.floor(floatPos.y - height / 2); y < floatPos.y + height / 2; y++) {
@@ -203,7 +208,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 distance += 1;
                 List<Vector3i> newBorder = new ArrayList<>();
                 for (Vector3i pos : border) {
-                    Vector3i newPos = new Vector3i(pos).subY(1); // pos itself mustn't be mutated or it could break the HashSet.
+                    Vector3i newPos = new Vector3i(pos).sub(0, 1, 0); // pos itself mustn't be mutated or it could break the HashSet.
                     if (!positions.contains(newPos)) {
                         newBorder.add(newPos);
                         if (!worldProvider.isBlockRelevant(newPos) || TreeUtils.isSolid(worldProvider.getBlock(newPos))) {
@@ -231,7 +236,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             try {
                 while (true) {
                     extraDataCount++;
-                    worldProvider.getExtraData(extraDataCount, examplePos);
+                    worldProvider.getExtraData(extraDataCount, JomlUtil.from(examplePos));
                 }
             } catch (ArrayIndexOutOfBoundsException ignored) {
                 // This is actually the expected exit from the loop.
@@ -242,11 +247,11 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             Map<Vector3i, Set<Component>> oldComponents = new HashMap<>();
             Set<EntityRef> blockRegionsSeen = new HashSet<>(); //blockRegions cover multiple blocks, so they may be encountered multiple times in the loop.
             for (Vector3i pos : positions) {
-                Vector3i movedPos = new Vector3i(pos).subY(distance);
+                Vector3i movedPos = new Vector3i(pos).sub(0, distance, 0);
                 blockChanges.put(movedPos, worldProvider.getBlock(pos));
                 int[] localExtraData = new int[extraDataCount];
                 for (int i = 0; i < extraDataCount; i++) {
-                    localExtraData[i] = worldProvider.getExtraData(i, pos);
+                    localExtraData[i] = worldProvider.getExtraData(i, JomlUtil.from(pos));
                 }
                 extraData.add(new Pair<>(movedPos, localExtraData));
                 EntityRef oldEntity = blockEntityRegistry.getExistingEntityAt(pos);
@@ -276,16 +281,16 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                         blockRegionsSeen.add(oldEntity);
                     }
                 }
-                
+
                 Block replacedBlock = worldProvider.getBlock(movedPos);
                 if (replacedBlock.isLiquid()) {
                     Vector3i placementPos = new Vector3i(movedPos);
                     while (blockChanges.containsKey(placementPos) || (worldProvider.getBlock(placementPos) != air && !positions.contains(placementPos))) {
-                        placementPos.addY(1);
+                        placementPos.add(0, 1, 0);
                     }
                     localExtraData = new int[extraDataCount];
                     for (int i = 0; i < extraDataCount; i++) {
-                        localExtraData[i] = worldProvider.getExtraData(i, movedPos);
+                        localExtraData[i] = worldProvider.getExtraData(i, JomlUtil.from(movedPos));
                     }
                     blockChanges.put(placementPos, replacedBlock);
                     extraData.add(new Pair<>(placementPos, localExtraData));
@@ -296,12 +301,12 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 blockRemovals.put(pos, air);
             }
             // Setting everything to air separately first may be necessary to properly reset the block entities in some cases where a block happens to be replaced by another block of the same type.
-            worldProvider.setBlocks(blockRemovals);
-            worldProvider.setBlocks(blockChanges);
+            worldProvider.setBlocks(JomlUtil.blockMap(blockRemovals));
+            worldProvider.setBlocks(JomlUtil.blockMap(blockChanges));
             for (Pair<Vector3i, int[]> pair : extraData) {
                 Vector3i pos = pair.a;
                 for (int i = 0; i < extraDataCount; i++) {
-                    worldProvider.setExtraData(i, pos, pair.b[i]);
+                    worldProvider.setExtraData(i, JomlUtil.from(pos), pair.b[i]);
                 }
 
                 if (oldComponents.containsKey(pos)) {
@@ -322,7 +327,10 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     }
 
     public float getEntityHeight(EntityRef entity) {
-        // A complete implementation of this would have to deal with CharacterMovementComponent, BoxShapeComponent, CapsuleShapeComponent, CylinderShapeComponent, HullShapeComponent and SphereShapeComponent all separately. CharacterMovementComponent is by far the most important case, so pending a rearrangement of how this works in the engine, I'll only be checking that.
+        // A complete implementation of this would have to deal with CharacterMovementComponent, BoxShapeComponent,
+        // CapsuleShapeComponent, CylinderShapeComponent, HullShapeComponent and SphereShapeComponent all separately.
+        // CharacterMovementComponent is by far the most important case, so pending a rearrangement of how this works in
+        // the engine, I'll only be checking that.
         CharacterMovementComponent movementComponent = entity.getComponent(CharacterMovementComponent.class);
         if (movementComponent == null) {
             return 0.1f;
@@ -335,7 +343,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     public void shutdown() {
         updateThread.interrupt();
     }
-    
+
     @Command(shortDescription = "Print debug information relating to FallingBlocks.", helpText = "Validate the current state of the octree of FallingBlocks.")
     public String fallingBlocksDebug() {
         updateQueue.add(new ValidateUpdate());
@@ -353,7 +361,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         }
         return "Success.";
     }
-    
+
     @Command(shortDescription = "Display the status of FallingBlocks's update thread.")
     public String fallingBlocksStatus() {
         if (!updateThread.isAlive()) {

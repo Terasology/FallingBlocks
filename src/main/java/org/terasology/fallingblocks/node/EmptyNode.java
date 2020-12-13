@@ -3,12 +3,13 @@
 
 package org.terasology.fallingblocks.node;
 
-import java.util.*;
-
+import org.joml.Vector3i;
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Pair;
 import org.terasology.fallingblocks.Tree;
-import org.terasology.math.geom.Vector3i;
+
+import java.util.Collections;
+import java.util.Set;
 
 /**
  * Nodes containing no solid blocks.

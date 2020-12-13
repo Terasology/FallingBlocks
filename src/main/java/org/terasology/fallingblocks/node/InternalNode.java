@@ -12,7 +12,7 @@ import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Pair;
 import org.terasology.fallingblocks.Tree;
 import org.terasology.fallingblocks.TreeUtils;
-import org.terasology.math.geom.Vector3i;
+import org.joml.Vector3i;
 
 public class InternalNode extends Node {
     
@@ -41,7 +41,8 @@ public class InternalNode extends Node {
         
         chains = new HashSet<>();
         
-        // DFS to construct the Chains, and update the touching sets of the subchains at the same time. The search is arranged a little non-standardly in order to catch all the touching pairs.
+        // DFS to construct the Chains, and update the touching sets of the sub-chains at the same time. The search is
+        // arranged a little non-standardly in order to catch all the touching pairs.
         Stack<Pair<Integer, Chain>> stack = new Stack<>();
         while (!subChains.isEmpty()) {
             Set<Pair<Integer, Chain>> rawChain = new HashSet<>();

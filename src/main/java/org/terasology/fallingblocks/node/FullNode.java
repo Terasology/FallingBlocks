@@ -3,15 +3,14 @@
 
 package org.terasology.fallingblocks.node;
 
-import java.util.*;
-
+import org.joml.Vector3i;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Pair;
 import org.terasology.fallingblocks.TreeUtils;
-import org.terasology.math.geom.Vector3i;
+
+import java.util.Set;
 
 /**
  * Nodes entirely full with one chain.
