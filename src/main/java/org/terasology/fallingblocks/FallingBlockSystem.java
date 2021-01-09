@@ -44,7 +44,7 @@ import org.terasology.world.block.Block;
 import org.terasology.world.block.BlockComponent;
 import org.terasology.world.block.BlockManager;
 import org.terasology.world.block.regions.BlockRegionComponent;
-import org.terasology.world.chunks.ChunkConstants;
+import org.terasology.world.chunks.Chunks;
 import org.terasology.world.chunks.event.BeforeChunkUnload;
 import org.terasology.world.chunks.event.OnChunkLoaded;
 
@@ -135,9 +135,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
 
     @ReceiveEvent
     public void chunkLoaded(OnChunkLoaded event, EntityRef entity) {
-        Vector3i chunkPos = JomlUtil.from(event.getChunkPos());
-        chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
-        for (int y = 0; y < ChunkConstants.SIZE_Y; y += Tree.CHUNK_NODE_SIZE) {
+        Vector3i chunkPos = new Vector3i(event.getChunkPos());
+        chunkPos.mul(Chunks.SIZE_X, Chunks.SIZE_Y, Chunks.SIZE_Z);
+        for (int y = 0; y < Chunks.SIZE_Y; y += Tree.CHUNK_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).add(0, y, 0);
             //logger.info("Loading chunk at "+pos+".");
             boolean[] chunkData = TreeUtils.extractChunkData(worldProvider, pos);
@@ -147,9 +147,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
 
     @ReceiveEvent
     public void chunkUnloaded(BeforeChunkUnload event, EntityRef entity) {
-        Vector3i chunkPos = JomlUtil.from(event.getChunkPos());
-        chunkPos.mul(ChunkConstants.SIZE_X, ChunkConstants.SIZE_Y, ChunkConstants.SIZE_Z);
-        for (int y = 0; y < ChunkConstants.SIZE_Y; y += Tree.CHUNK_NODE_SIZE) {
+        Vector3i chunkPos = new Vector3i(event.getChunkPos());
+        chunkPos.mul(Chunks.SIZE_X, Chunks.SIZE_Y, Chunks.SIZE_Z);
+        for (int y = 0; y < Chunks.SIZE_Y; y += Tree.CHUNK_NODE_SIZE) {
             Vector3i pos = new Vector3i(chunkPos).add(0, y, 0);
             //logger.info("Unloading chunk at "+pos+".");
             updateQueue.add(new UnloadUpdate(pos));
