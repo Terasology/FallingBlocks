@@ -5,6 +5,7 @@ package org.terasology.fallingblocks;
 
 import org.joml.Vector3f;
 import org.joml.Vector3i;
+import org.joml.Vector3ic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terasology.entitySystem.Component;
@@ -242,7 +243,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 // This is actually the expected exit from the loop.
             }
 
-            Map<Vector3i, Block> blockChanges = new HashMap<>();
+            Map<Vector3ic, Block> blockChanges = new HashMap<>();
             Set<Pair<Vector3i, int[]>> extraData = new HashSet<>();
             Map<Vector3i, Set<Component>> oldComponents = new HashMap<>();
             Set<EntityRef> blockRegionsSeen = new HashSet<>(); //blockRegions cover multiple blocks, so they may be encountered multiple times in the loop.
@@ -296,13 +297,13 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                     extraData.add(new Pair<>(placementPos, localExtraData));
                 }
             }
-            Map<Vector3i, Block> blockRemovals = new HashMap<>();
+            Map<Vector3ic, Block> blockRemovals = new HashMap<>();
             for (Vector3i pos : positions) {
                 blockRemovals.put(pos, air);
             }
             // Setting everything to air separately first may be necessary to properly reset the block entities in some cases where a block happens to be replaced by another block of the same type.
-            worldProvider.setBlocks(JomlUtil.blockMap(blockRemovals));
-            worldProvider.setBlocks(JomlUtil.blockMap(blockChanges));
+            worldProvider.setBlocks(blockRemovals);
+            worldProvider.setBlocks(blockChanges);
             for (Pair<Vector3i, int[]> pair : extraData) {
                 Vector3i pos = pair.a;
                 for (int i = 0; i < extraDataCount; i++) {
