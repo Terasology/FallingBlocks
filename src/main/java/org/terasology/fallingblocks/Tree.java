@@ -1,4 +1,4 @@
-// Copyright 2020 The Terasology Foundation
+// Copyright 2021 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
 package org.terasology.fallingblocks;
@@ -7,7 +7,7 @@ import org.joml.Vector3i;
 import org.terasology.fallingblocks.arrays.IntPairSetHeap;
 import org.terasology.fallingblocks.node.EmptyNode;
 import org.terasology.fallingblocks.node.Node;
-import org.terasology.world.chunks.ChunkConstants;
+import org.terasology.world.chunks.Chunks;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,7 +17,7 @@ public class Tree {
     public Vector3i rootNodePos = null;
 
     // This actually needs to be the minimum of SIZE_X, SIZE_Y and SIZE_Z, but it's assumed later that SIZE_Y >= SIZE_X = SIZE_Z anyway.
-    public static final int CHUNK_NODE_SIZE = ChunkConstants.SIZE_X;
+    public static final int CHUNK_NODE_SIZE = Chunks.SIZE_X;
 
     // The octree structure divides at different levels in fixed locations. This constant is chosen so that, as far as
     // possible, the highest-level divisions are far from the origin, so that the root node isn't likely to need to be
