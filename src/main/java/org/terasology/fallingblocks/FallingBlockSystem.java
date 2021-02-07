@@ -1,4 +1,4 @@
-// Copyright 2020 The Terasology Foundation
+// Copyright 2021 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
 package org.terasology.fallingblocks;
@@ -35,7 +35,6 @@ import org.terasology.logic.health.EngineDamageTypes;
 import org.terasology.logic.health.HealthComponent;
 import org.terasology.logic.health.event.DoDamageEvent;
 import org.terasology.logic.location.LocationComponent;
-import org.terasology.math.JomlUtil;
 import org.terasology.network.NetworkComponent;
 import org.terasology.registry.In;
 import org.terasology.world.BlockEntityRegistry;
@@ -237,7 +236,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             try {
                 while (true) {
                     extraDataCount++;
-                    worldProvider.getExtraData(extraDataCount, JomlUtil.from(examplePos));
+                    worldProvider.getExtraData(extraDataCount, examplePos);
                 }
             } catch (ArrayIndexOutOfBoundsException ignored) {
                 // This is actually the expected exit from the loop.
@@ -252,7 +251,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 blockChanges.put(movedPos, worldProvider.getBlock(pos));
                 int[] localExtraData = new int[extraDataCount];
                 for (int i = 0; i < extraDataCount; i++) {
-                    localExtraData[i] = worldProvider.getExtraData(i, JomlUtil.from(pos));
+                    localExtraData[i] = worldProvider.getExtraData(i, pos);
                 }
                 extraData.add(new Pair<>(movedPos, localExtraData));
                 EntityRef oldEntity = blockEntityRegistry.getExistingEntityAt(pos);
@@ -291,7 +290,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                     }
                     localExtraData = new int[extraDataCount];
                     for (int i = 0; i < extraDataCount; i++) {
-                        localExtraData[i] = worldProvider.getExtraData(i, JomlUtil.from(movedPos));
+                        localExtraData[i] = worldProvider.getExtraData(i, movedPos);
                     }
                     blockChanges.put(placementPos, replacedBlock);
                     extraData.add(new Pair<>(placementPos, localExtraData));
@@ -307,7 +306,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             for (Pair<Vector3i, int[]> pair : extraData) {
                 Vector3i pos = pair.a;
                 for (int i = 0; i < extraDataCount; i++) {
-                    worldProvider.setExtraData(i, JomlUtil.from(pos), pair.b[i]);
+                    worldProvider.setExtraData(i, pos, pair.b[i]);
                 }
 
                 if (oldComponents.containsKey(pos)) {
