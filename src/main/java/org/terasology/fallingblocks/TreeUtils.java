@@ -4,13 +4,13 @@
 package org.terasology.fallingblocks;
 
 import org.joml.Vector3i;
+import org.terasology.engine.world.WorldProvider;
+import org.terasology.engine.world.block.Block;
 import org.terasology.fallingblocks.node.EmptyNode;
 import org.terasology.fallingblocks.node.InternalNode;
 import org.terasology.fallingblocks.node.Node;
 import org.terasology.fallingblocks.node.SolidNode;
 import org.terasology.fallingblocks.node.UnloadedNode;
-import org.terasology.world.WorldProvider;
-import org.terasology.world.block.Block;
 
 import static org.terasology.fallingblocks.Tree.CHUNK_NODE_SIZE;
 

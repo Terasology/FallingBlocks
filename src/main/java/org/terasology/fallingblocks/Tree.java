@@ -4,10 +4,10 @@
 package org.terasology.fallingblocks;
 
 import org.joml.Vector3i;
+import org.terasology.engine.world.chunks.Chunks;
 import org.terasology.fallingblocks.arrays.IntPairSetHeap;
 import org.terasology.fallingblocks.node.EmptyNode;
 import org.terasology.fallingblocks.node.Node;
-import org.terasology.world.chunks.Chunks;
 
 import java.util.HashMap;
 import java.util.Map;

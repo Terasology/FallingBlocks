@@ -3,7 +3,7 @@
 
 package org.terasology.fallingblocks;
 
-import org.terasology.entitySystem.Component;
+import org.terasology.engine.entitySystem.Component;
 
 public class LevitatingBlockComponent implements Component {
     /** The total mass of blocks this can support, or 0 for unlimited. */
