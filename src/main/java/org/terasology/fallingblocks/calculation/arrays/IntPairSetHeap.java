@@ -1,10 +1,10 @@
 // Copyright 2020 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks.arrays;
+package org.terasology.fallingblocks.calculation.arrays;
 
 import java.util.*;
-import org.terasology.fallingblocks.Pair;
+import org.terasology.fallingblocks.calculation.Pair;
 
 /**
  * A set of sets of int-object-pairs, where each of the (outer) sets has a fixed int label.

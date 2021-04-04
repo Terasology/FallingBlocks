@@ -1,9 +1,9 @@
-// Copyright 2020 The Terasology Foundation
+// Copyright 2021 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks.arrays;
+package org.terasology.fallingblocks.calculation.arrays;
 
-import org.terasology.fallingblocks.Pair;
+import org.terasology.fallingblocks.calculation.Pair;
 
 /**
  * An extendable list of pairs of an int and an object.

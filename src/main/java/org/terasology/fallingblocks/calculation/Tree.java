@@ -1,13 +1,13 @@
 // Copyright 2021 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks;
+package org.terasology.fallingblocks.calculation;
 
 import org.joml.Vector3i;
 import org.terasology.engine.world.chunks.Chunks;
-import org.terasology.fallingblocks.arrays.IntPairSetHeap;
-import org.terasology.fallingblocks.node.EmptyNode;
-import org.terasology.fallingblocks.node.Node;
+import org.terasology.fallingblocks.calculation.arrays.IntPairSetHeap;
+import org.terasology.fallingblocks.calculation.node.EmptyNode;
+import org.terasology.fallingblocks.calculation.node.Node;
 
 import java.util.HashMap;
 import java.util.Map;

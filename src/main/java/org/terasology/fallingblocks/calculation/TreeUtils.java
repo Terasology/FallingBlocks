@@ -1,18 +1,18 @@
-// Copyright 2020 The Terasology Foundation
+// Copyright 2021 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks;
+package org.terasology.fallingblocks.calculation;
 
 import org.joml.Vector3i;
 import org.terasology.engine.world.WorldProvider;
 import org.terasology.engine.world.block.Block;
-import org.terasology.fallingblocks.node.EmptyNode;
-import org.terasology.fallingblocks.node.InternalNode;
-import org.terasology.fallingblocks.node.Node;
-import org.terasology.fallingblocks.node.SolidNode;
-import org.terasology.fallingblocks.node.UnloadedNode;
+import org.terasology.fallingblocks.calculation.node.EmptyNode;
+import org.terasology.fallingblocks.calculation.node.InternalNode;
+import org.terasology.fallingblocks.calculation.node.Node;
+import org.terasology.fallingblocks.calculation.node.SolidNode;
+import org.terasology.fallingblocks.calculation.node.UnloadedNode;
 
-import static org.terasology.fallingblocks.Tree.CHUNK_NODE_SIZE;
+import static org.terasology.fallingblocks.calculation.Tree.CHUNK_NODE_SIZE;
 
 public class TreeUtils {
     public static final int[] DIRECTIONS = new int[]{-4, -2, -1, 1, 2, 4};
