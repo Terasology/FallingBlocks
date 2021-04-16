@@ -1,7 +1,7 @@
-// Copyright 2020 The Terasology Foundation
+// Copyright 2021 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks;
+package org.terasology.fallingblocks.calculation;
 
 public class Pair<A,B>{
     public final A a;

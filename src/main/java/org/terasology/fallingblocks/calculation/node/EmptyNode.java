@@ -1,12 +1,12 @@
-// Copyright 2020 The Terasology Foundation
+// Copyright 2021 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks.node;
+package org.terasology.fallingblocks.calculation.node;
 
 import org.joml.Vector3i;
-import org.terasology.fallingblocks.Chain;
-import org.terasology.fallingblocks.Pair;
-import org.terasology.fallingblocks.Tree;
+import org.terasology.fallingblocks.calculation.Chain;
+import org.terasology.fallingblocks.calculation.Pair;
+import org.terasology.fallingblocks.calculation.Tree;
 
 import java.util.Collections;
 import java.util.Set;

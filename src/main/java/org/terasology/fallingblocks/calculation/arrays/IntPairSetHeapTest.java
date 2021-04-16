@@ -1,11 +1,11 @@
 // Copyright 2020 The Terasology Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-package org.terasology.fallingblocks.arrays;
+package org.terasology.fallingblocks.calculation.arrays;
 
 import java.util.*;
-import org.terasology.fallingblocks.Pair;
-import org.terasology.fallingblocks.TreeUtils;
+import org.terasology.fallingblocks.calculation.Pair;
+import org.terasology.fallingblocks.calculation.TreeUtils;
 
 /**
  * Check the behaviour of IntPairSetHeap against a simpler reimplementation. The allocation of keys depends on extra bins, so it isn't checked.
