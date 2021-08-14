@@ -12,7 +12,7 @@ public class LevitatingBlockComponent implements Component<LevitatingBlockCompon
     public float strength = 0;
 
     @Override
-    public void copy(LevitatingBlockComponent other) {
+    public void copyFrom(LevitatingBlockComponent other) {
         this.strength = other.strength;
     }
 }
