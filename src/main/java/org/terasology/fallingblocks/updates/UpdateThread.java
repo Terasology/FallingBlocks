@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class UpdateThread extends Thread{
+public class UpdateThread extends Thread {
     private final BlockingQueue<Update> in;
     private final BlockingQueue<Set<Vector3i>> out;
     private final Object updatingFinishedMonitor;
@@ -35,7 +35,7 @@ public class UpdateThread extends Thread{
         previousUpdatedTime = System.currentTimeMillis();
         try {
             while (!isInterrupted()) {
-                Update update = in.poll(100,TimeUnit.MILLISECONDS);
+                Update update = in.poll(100, TimeUnit.MILLISECONDS);
                 long startTime = System.currentTimeMillis();
                 if (update != null) {
                     updatedChains.addAll(update.execute(tree));
@@ -47,16 +47,19 @@ public class UpdateThread extends Thread{
                 if (startTime > previousUpdatedTime + 90 && in.isEmpty()) {
                     previousUpdatedTime = startTime;
                     for (Chain chain : updatedChains) {
-                        while (chain.parent != null) { // Just in case the root node has expanded since this chain was added to the set.
-                            chain = chain.parent;
+                        Chain currentChain = chain;
+                        while (currentChain.parent != null) { // Just in case the root node has expanded since this chain was added to the set.
+                            currentChain = currentChain.parent;
                         }
-                        if (chain.isActive() && !chain.supported && !chain.isTouchingAnySide()) {
-                            out.add(chain.getPositions(tree.rootNodePos));
+                        if (currentChain.isActive() && !currentChain.supported && !currentChain.isTouchingAnySide()) {
+                            out.add(currentChain.getPositions(tree.rootNodePos));
                         }
                     }
                     updatedChains.clear();
                 }
-                synchronized (updatingFinishedMonitor) { // I can't find convenient monitors separate from locks, and Java requires that the lock be acquired before the monitor is usable.
+                // TODO: I can't find convenient monitors separate from locks,
+                //  and Java requires that the lock be acquired before the monitor is usable.
+                synchronized (updatingFinishedMonitor) {
                     updatingFinishedMonitor.notifyAll();
                 }
             }

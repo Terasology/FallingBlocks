@@ -3,44 +3,46 @@
 
 package org.terasology.fallingblocks.node;
 
-import java.util.*;
-
+import org.joml.Vector3i;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.terasology.fallingblocks.Chain;
 import org.terasology.fallingblocks.Pair;
 import org.terasology.fallingblocks.Tree;
 import org.terasology.fallingblocks.TreeUtils;
-import org.joml.Vector3i;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Stack;
 
 public class InternalNode extends Node {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(InternalNode.class);
-    
+
     // The child nodes, in the order:
     // -x-y-z, -x-y+z, -x+y-z, -x+y+z, +x-y-z, +x-y+z, +x+y-z, +x+y+z
     // The cardinal directions have corresponding labels:
     // +x: 4, +y: 2, +z: 1, -x: -4, -y: -2, -z: -1
     public Node[] children;
-    
+
     // The connected components of the solid blocks in this region
     private Set<Chain> chains;
-    
+
     public InternalNode(int size, Node[] children, Tree tree) {
         this.size = size;
         this.tree = tree;
         this.children = children;
-        
+
         Set<Pair<Integer, Chain>> subChains = new HashSet<>();
         for (int i = 0; i < 8; i++) {
             for (Chain c : children[i].getChains()) {
                 subChains.add(new Pair<>(i, c));
             }
         }
-        
+
         chains = new HashSet<>();
-        
+
         // DFS to construct the Chains, and update the touching sets of the sub-chains at the same time. The search is
         // arranged a little non-standardly in order to catch all the touching pairs.
         Stack<Pair<Integer, Chain>> stack = new Stack<>();
@@ -62,49 +64,51 @@ public class InternalNode extends Node {
                 }
             }
             subChains.removeAll(rawChain);
-            
+
             Chain chain = new Chain(rawChain, this);
             chains.add(chain);
         }
     }
-    
+
     @Override
     public Set<Chain> getChains() {
         return chains;
     }
-    
+
     @Override
     public Pair<Node, Set<Chain>> removeBlock(Vector3i pos) {
         int octant = TreeUtils.octantOfPosition(pos, size);
-        Vector3i subPosition = TreeUtils.modVector(pos, size/2);
+        Vector3i subPosition = TreeUtils.modVector(pos, size / 2);
         Pair<Node, Set<Chain>> childResult = children[octant].removeBlock(subPosition);
         children[octant] = childResult.a;
         return new Pair<>(chains.isEmpty() ? EmptyNode.get(size, tree) : this, childResult.b);
     }
-    
+
     /**
-     * @param pos      The position where the block is added, relative to this node.
+     * @param pos The position where the block is added, relative to this node.
      * @param siblings The nodes adjacent to the new block, with the same size as this.
      * @return The node to replace this with, the chain containing the new block, and the adjacent chains.
      */
     @Override
-    public Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> insertFullNode(Vector3i pos, FullNode node, Set<Pair<Integer, Node>> siblings) {
+    public Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> insertFullNode(Vector3i pos, FullNode node,
+                                                                             Set<Pair<Integer, Node>> siblings) {
         if (size == node.size) {
             return replaceWithFullNode(node, siblings);
         }
-        
+
         int octant = TreeUtils.octantOfPosition(pos, size);
-        Vector3i subPosition = TreeUtils.modVector(pos, size/2);
-        //logger.info("Inserting node of size "+node.size+", this node size = "+size+", block in octant "+octant+" with position "+pos+" and subPosition "+subPosition+".");
+        Vector3i subPosition = TreeUtils.modVector(pos, size / 2);
+        //logger.info("Inserting node of size "+node.size+", this node size = "+size+",
+        // block in octant "+octant+" with position "+pos+" and subPosition "+subPosition+".");
         Set<Pair<Integer, Node>> nextSiblings = new HashSet<>();
         for (int i = 0; i < TreeUtils.DIRECTIONS.length; i++) {
             int side = TreeUtils.DIRECTIONS[i];
             //logger.info("Trying new sibling on side "+side);
-            if (TreeUtils.isOctantOnSide(octant, -side) && TreeUtils.isPositionOnSide(subPosition, side, node.size, size/2)) {
+            if (TreeUtils.isOctantOnSide(octant, -side) && TreeUtils.isPositionOnSide(subPosition, side, node.size, size / 2)) {
                 //logger.info("Correct position.");
-                if (!(children[octant+side] instanceof EmptyNode)) {
+                if (!(children[octant + side] instanceof EmptyNode)) {
                     //logger.info("New sibling  on side "+side+", "+children[octant+side].getClass());
-                    nextSiblings.add(new Pair<>(side, children[octant+side]));
+                    nextSiblings.add(new Pair<>(side, children[octant + side]));
                 }
             }
         }
@@ -114,14 +118,14 @@ public class InternalNode extends Node {
             TreeUtils.assrt(sibling.size == size);
             TreeUtils.assrt(TreeUtils.isOctantOnSide(octant, side));
             if (sibling instanceof InternalNode) {
-                Node child = ((InternalNode) sibling).children[octant-side];
+                Node child = ((InternalNode) sibling).children[octant - side];
                 //logger.info("Existing sibling on side "+side+", "+child.getClass());
                 if (!(child.getChains().isEmpty())) {
                     nextSiblings.add(new Pair<>(side, child));
                 }
             }
         }
-        
+
         Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> p = children[octant].insertFullNode(subPosition, node, nextSiblings);
         children[octant] = p.a;
         Chain newChain = p.b.a;
@@ -130,7 +134,7 @@ public class InternalNode extends Node {
         if (newChain.parent == null) { // The block hasn't merged into any existing chains.
             chains.add(new Chain(octant, newChain, this));
         }
-        
+
         Set<Pair<Integer, Chain>> nextTouching = new HashSet<>();
 
         //logger.info("Back to size "+size);
@@ -158,7 +162,7 @@ public class InternalNode extends Node {
 
         for (Pair<Integer, Chain> t : nextTouching) {
             TreeUtils.assrt(newChain.parent.baseIsTouching(t.b, t.a));
-            TreeUtils.assrt(t.b.baseIsTouching(newChain.parent,-t.a));
+            TreeUtils.assrt(t.b.baseIsTouching(newChain.parent, -t.a));
             Chain.addTouching(newChain.parent, t.b, t.a);
             //logger.info("Recording touch, side "+t.a);
         }
@@ -175,13 +179,15 @@ public class InternalNode extends Node {
             for (Pair<Integer, Chain> t : newChain.parent.touching()) {
                 altSiblings.add(new Pair<>(t.a, t.b.node));
             }
-            // This larger replacement node may be touching nodes farther away than those in the siblings set, so a new version is necessary. This seems a little dodgy in that it breaks a few of the general assumptions in how insertFullNode works, but it should be okay.
+            // This larger replacement node may be touching nodes farther away than those in the siblings set,
+            // so a new version is necessary. This seems a little dodgy in that it breaks a few of the general assumptions
+            // in how insertFullNode works, but it should be okay.
             return replaceWithFullNode(node.getSimilar(size), altSiblings);
         }
 
         return new Pair<>(this, new Pair<>(newChain.parent, nextTouching));
     }
-    
+
     /**
      * Returns an octant if there's only one loaded child node, -1 if there are none, and -2 if there are multiple.
      */
@@ -202,7 +208,7 @@ public class InternalNode extends Node {
         }
         return new Pair<>(resultIndex, resultNode);
     }
-    
+
     /**
      * Replace an UnloadedNode with something else.
      */
@@ -216,7 +222,7 @@ public class InternalNode extends Node {
         int octant = TreeUtils.octantOfPosition(pos, size);
         Node oldChild = children[octant];
         if (oldChild instanceof UnloadedNode) {
-            children[octant] = TreeUtils.buildExpandedNode(tree, newNode, TreeUtils.modVector(pos, size/2), size/2);
+            children[octant] = TreeUtils.buildExpandedNode(tree, newNode, TreeUtils.modVector(pos, size / 2), size / 2);
             Chain chain = ((UnloadedNode) oldChild).getChain();
             TreeUtils.assrt(chain.isActive());
             TreeUtils.assrt(chain.parent.isActive());
@@ -230,14 +236,14 @@ public class InternalNode extends Node {
             chain.inactivate(false);
             return chain.parent.checkConnectivity();
         } else {
-            return oldChild.insertNewChunk(newNode, TreeUtils.modVector(pos, size/2));
+            return oldChild.insertNewChunk(newNode, TreeUtils.modVector(pos, size / 2));
         }
     }
-    
+
     @Override
     public void validate(Stack<Integer> location) {
         for (int i = 0; i < 8; i++) {
-            TreeUtils.assrt(children[i].size == size/2);
+            TreeUtils.assrt(children[i].size == size / 2);
             for (Chain chain : children[i].getChains()) {
                 if (chain != null) {
                     TreeUtils.assrt(chain.parent.node == this);

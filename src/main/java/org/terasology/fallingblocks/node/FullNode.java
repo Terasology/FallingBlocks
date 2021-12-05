@@ -16,25 +16,26 @@ import java.util.Set;
  * Nodes entirely full with one chain.
  */
 public abstract class FullNode extends Node {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(FullNode.class);
-    
+
     Set<Chain> chains;
     Chain chain;
-    
+
     @Override
     public Set<Chain> getChains() {
         return chains;
     }
-    
+
     public Chain getChain() {
         return chain;
     }
-    
+
     public abstract FullNode getSimilar(int size);
-    
+
     @Override
-    public Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> insertFullNode(Vector3i pos, FullNode node, Set<Pair<Integer, Node>> siblings) {
+    public Pair<Node, Pair<Chain, Set<Pair<Integer, Chain>>>> insertFullNode(Vector3i pos, FullNode node,
+                                                                             Set<Pair<Integer, Node>> siblings) {
         if (size == node.size) {
             // A custom implementation could be a little more efficient, but this is simpler.
             return replaceWithFullNode(node, siblings);
@@ -42,7 +43,7 @@ public abstract class FullNode extends Node {
             return equivalentInternalNode().insertFullNode(pos, node, siblings);
         }
     }
-    
+
     /**
      * Replace an UnloadedNode with something else.
      */
@@ -50,11 +51,11 @@ public abstract class FullNode extends Node {
     public Set<Chain> insertNewChunk(Node newNode, Vector3i pos) {
         throw new RuntimeException("Trying to insert new chunk in a leaf node. Node can't replace itself.");
     }
-    
+
     public InternalNode equivalentInternalNode() {
         Node[] children = new Node[8];
         for (int i = 0; i < 8; i++) {
-            children[i] = getSimilar(size/2);
+            children[i] = getSimilar(size / 2);
         }
         InternalNode replacementNode = new InternalNode(size, children, tree);
         Chain replacementChain = replacementNode.getChains().iterator().next();

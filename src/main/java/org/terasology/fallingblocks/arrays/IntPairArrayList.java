@@ -6,15 +6,15 @@ package org.terasology.fallingblocks.arrays;
 import org.terasology.fallingblocks.Pair;
 
 /**
- * An extendable list of pairs of an int and an object.
- * Despite the name, this behaves differently from ArrayList when `set` is called outside the current range. This class will simply expand the range to match, as that's what's most useful here.
+ * An extendable list of pairs of an int and an object. Despite the name, this behaves differently from ArrayList when `set` is called
+ * outside the current range. This class will simply expand the range to match, as that's what's most useful here.
  */
 public class IntPairArrayList<T> {
     private static final float EXPANSION_FACTOR = 1.5f;
     private int[] as;
     private Object[] bs;
     private int size;
-    
+
     public IntPairArrayList() {
         as = new int[16];
         bs = new Object[16];

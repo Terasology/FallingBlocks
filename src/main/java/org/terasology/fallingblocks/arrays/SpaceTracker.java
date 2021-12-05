@@ -3,7 +3,8 @@
 
 package org.terasology.fallingblocks.arrays;
 
-import java.util.*;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 /**
  * A finite set of natural numbers optimised for finding the lowest non-member.

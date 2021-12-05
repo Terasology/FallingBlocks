@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.terasology.engine.entitySystem.entity.EntityManager;
 import org.terasology.engine.entitySystem.entity.EntityRef;
-import org.terasology.engine.entitySystem.event.ReceiveEvent;
 import org.terasology.engine.entitySystem.metadata.ComponentMetadata;
 import org.terasology.engine.entitySystem.prefab.Prefab;
 import org.terasology.engine.entitySystem.prefab.PrefabManager;
@@ -45,6 +44,7 @@ import org.terasology.fallingblocks.updates.Update;
 import org.terasology.fallingblocks.updates.UpdateThread;
 import org.terasology.fallingblocks.updates.ValidateUpdate;
 import org.terasology.gestalt.entitysystem.component.Component;
+import org.terasology.gestalt.entitysystem.event.ReceiveEvent;
 import org.terasology.module.health.components.HealthComponent;
 import org.terasology.module.health.events.DoDamageEvent;
 
@@ -63,6 +63,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
 
     private static final Logger logger = LoggerFactory.getLogger(FallingBlockSystem.class);
 
+    // TODO: Ideally this would be configurable, but I don't think there's currently a working way to do module configuration like this.
+    public boolean detachByMoving = true;
+
     @In
     private BlockManager blockManager;
     private Block air;
@@ -79,7 +82,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
     @In
     private PrefabManager prefabManager;
     private Prefab fallingDamageType;
-    public boolean detachByMoving = true; // Ideally this would be configurable, but I don't think there's currently a working way to do module configuration like this.
+
 
     private BlockingQueue<Update> updateQueue;
     private BlockingQueue<Set<Vector3i>> detachedChainQueue;
@@ -100,12 +103,14 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         updateThread.start();
     }
 
-    // TODO: Maybe make this a WorldChangeListener instead? Compare efficiency. Aggregate changes into batches (should improve efficiency and avoid confusing reentrant behaviour when falling blocks cause block updates).
+    // TODO: Maybe make this a WorldChangeListener instead? Compare efficiency.
+    //  Aggregate changes into batches (should improve efficiency and avoid confusing reentrant behaviour
+    //  when falling blocks cause block updates).
+
     /**
-     * Called every time a block is changed.
-     * This means that the type of the block has changed.
+     * Called every time a block is changed. This means that the type of the block has changed.
      *
-     * @param event       The block change event
+     * @param event The block change event
      * @param blockEntity The entity of the block being changed
      */
     @ReceiveEvent
@@ -188,7 +193,8 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 // Ideally this would take into account the size of the object too, but I don't know where to find that.
                 Vector3f floatPos = entity.getComponent(LocationComponent.class).getWorldPosition(new Vector3f());
                 float height = getEntityHeight(entity);
-                // The use of Math.floor rather than just casting is necessary to get the correct rounding towards negative infinity behaviour.
+                // The use of Math.floor rather than just casting is necessary to get the correct rounding
+                // towards negative infinity behaviour.
                 for (int y = (int) Math.floor(floatPos.y - height / 2); y < floatPos.y + height / 2; y++) {
                     Vector3i pos = new Vector3i(Math.round(floatPos.x), y, Math.round(floatPos.z));
                     //logger.info("Found entity subject to damage: "+floatPos+", "+pos);
@@ -208,7 +214,8 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 distance += 1;
                 List<Vector3i> newBorder = new ArrayList<>();
                 for (Vector3i pos : border) {
-                    Vector3i newPos = new Vector3i(pos).sub(0, 1, 0); // pos itself mustn't be mutated or it could break the HashSet.
+                    // pos itself mustn't be mutated or it could break the HashSet.
+                    Vector3i newPos = new Vector3i(pos).sub(0, 1, 0);
                     if (!positions.contains(newPos)) {
                         newBorder.add(newPos);
                         if (!worldProvider.isBlockRelevant(newPos) || TreeUtils.isSolid(worldProvider.getBlock(newPos))) {
@@ -221,7 +228,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                     for (Vector3i pos : border) {
                         if (allEntities.containsKey(pos)) {
                             for (EntityRef entity : allEntities.get(pos)) {
-                                float damage = 0.01f * totalMass * (distance+1);
+                                float damage = 0.01f * totalMass * (distance + 1);
                                 //logger.info("Found entity to damage. Amount="+damage);
                                 entity.send(new DoDamageEvent((int) damage, EngineDamageTypes.PHYSICAL.get()));
                             }
@@ -245,7 +252,8 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             Map<Vector3ic, Block> blockChanges = new HashMap<>();
             Set<Pair<Vector3i, int[]>> extraData = new HashSet<>();
             Map<Vector3i, Set<Component>> oldComponents = new HashMap<>();
-            Set<EntityRef> blockRegionsSeen = new HashSet<>(); //blockRegions cover multiple blocks, so they may be encountered multiple times in the loop.
+            Set<EntityRef> blockRegionsSeen = new HashSet<>(); //blockRegions cover multiple blocks, so they may be encountered multiple
+            // times in the loop.
             for (Vector3i pos : positions) {
                 Vector3i movedPos = new Vector3i(pos).sub(0, distance, 0);
                 blockChanges.put(movedPos, worldProvider.getBlock(pos));
@@ -269,7 +277,8 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                             ignoredComponents.addAll(retainComponent.components);
                         }
                         for (Component component : oldEntity.iterateComponents()) {
-                            ComponentMetadata<? extends Component> metadata = entityManager.getComponentLibrary().getMetadata(component.getClass());
+                            ComponentMetadata<? extends Component> metadata =
+                                    entityManager.getComponentLibrary().getMetadata(component.getClass());
                             if (!ignoredComponents.contains(component.getClass()) && !metadata.isRetainUnalteredOnBlockChange()) {
                                 components.add(entityManager.getComponentLibrary().copyWithOwnedEntities(component));
                             }
@@ -285,7 +294,8 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
                 Block replacedBlock = worldProvider.getBlock(movedPos);
                 if (replacedBlock.isLiquid()) {
                     Vector3i placementPos = new Vector3i(movedPos);
-                    while (blockChanges.containsKey(placementPos) || (worldProvider.getBlock(placementPos) != air && !positions.contains(placementPos))) {
+                    while (blockChanges.containsKey(placementPos) || (worldProvider.getBlock(placementPos) != air
+                            && !positions.contains(placementPos))) {
                         placementPos.add(0, 1, 0);
                     }
                     localExtraData = new int[extraDataCount];
@@ -300,7 +310,8 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             for (Vector3i pos : positions) {
                 blockRemovals.put(pos, air);
             }
-            // Setting everything to air separately first may be necessary to properly reset the block entities in some cases where a block happens to be replaced by another block of the same type.
+            // TODO: Setting everything to air separately first may be necessary to properly reset the block entities
+            //  in some cases where a block happens to be replaced by another block of the same type.
             worldProvider.setBlocks(blockRemovals);
             worldProvider.setBlocks(blockChanges);
             for (Pair<Vector3i, int[]> pair : extraData) {
@@ -344,14 +355,17 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
         updateThread.interrupt();
     }
 
-    @Command(shortDescription = "Print debug information relating to FallingBlocks.", helpText = "Validate the current state of the octree of FallingBlocks.")
+    @Command(shortDescription = "Print debug information relating to FallingBlocks.",
+            helpText = "Validate the current state of the octree of FallingBlocks.")
     public String fallingBlocksDebug() {
         updateQueue.add(new ValidateUpdate());
         if (!updateThread.isAlive()) {
             return "FallingBlocks updater thread already dead.";
         }
         try {
-            synchronized (updatingFinishedMonitor) { // I can't find convenient monitors separate from locks, and Java requires that the lock be acquired before the monitor is usable.
+            // TODO: I can't find convenient monitors separate from locks,
+            //  and Java requires that the lock be acquired before the monitor is usable.
+            synchronized (updatingFinishedMonitor) { //
                 while (updateQueue.peek() != null) {
                     updatingFinishedMonitor.wait();
                 }
@@ -371,7 +385,7 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
             if (updates == 0) {
                 return "Updating finished.";
             } else {
-                return "Updates left: "+updates;
+                return "Updates left: " + updates;
             }
         }
     }

@@ -9,7 +9,7 @@ import org.terasology.fallingblocks.Tree;
 import java.util.Collections;
 import java.util.Set;
 
-public class ValidateUpdate implements Update{
+public class ValidateUpdate implements Update {
     public ValidateUpdate() {
     }
 

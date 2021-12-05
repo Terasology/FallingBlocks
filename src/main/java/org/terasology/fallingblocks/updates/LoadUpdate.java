@@ -30,7 +30,8 @@ public class LoadUpdate implements Update {
             return tree.rootNode.getChains();
         }
         while (!tree.isWithinRootNode(pos)) {
-            Vector3i relativePos = TreeUtils.modVector(new Vector3i(tree.rootNodePos).add(Tree.ROOT_OFFSET, Tree.ROOT_OFFSET, Tree.ROOT_OFFSET), tree.rootNode.size * 2);
+            Vector3i relativePos = TreeUtils.modVector(new Vector3i(tree.rootNodePos).add(Tree.ROOT_OFFSET,
+                    Tree.ROOT_OFFSET, Tree.ROOT_OFFSET), tree.rootNode.size * 2);
             Vector3i newRootNodePos = new Vector3i(tree.rootNodePos).sub(relativePos);
             //logger.info("Expanding root node from "+rootNodePos+", "+rootNode.size+" to "+newRootNodePos);
             tree.rootNode = TreeUtils.buildExpandedNode(tree, tree.rootNode, relativePos, tree.rootNode.size * 2);

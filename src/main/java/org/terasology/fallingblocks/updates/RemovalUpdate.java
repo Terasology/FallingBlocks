@@ -9,7 +9,7 @@ import org.terasology.fallingblocks.Tree;
 
 import java.util.Set;
 
-public class RemovalUpdate implements Update{
+public class RemovalUpdate implements Update {
     Vector3i pos;
 
     public RemovalUpdate(Vector3i pos) {
