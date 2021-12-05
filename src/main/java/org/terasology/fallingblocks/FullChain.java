@@ -16,33 +16,35 @@ import java.util.Stack;
  * The connected component within a FullNode, filling its space.
  */
 public class FullChain extends Chain {
-    // subchains it not used, so it is left as null. I suspect there's some better way to arrange the classes, perhaps with a common abstract superclass like Node, that avoids having superfluous class members.
-    
+    // subchains it not used, so it is left as null. I suspect there's some better way to arrange the classes,
+    // perhaps with a common abstract superclass like Node, that avoids having superfluous class members.
+
     public FullChain(FullNode node, boolean supported) {
         super(null, node);
         this.supported = supported;
     }
-    
+
     @Override
     void deriveTouchingFromSubchains() {
         // There are no subchains.
     }
-    
+
     @Override
     public void resetSupported() {
         supported = true;
     }
-    
+
     @Override
     public void merge(Chain sibling) {
-        throw new UnsupportedOperationException("FullChains are always the only chain in their node, therefore there is nothing it would be valid for them to merge with.");
+        throw new UnsupportedOperationException("FullChains are always the only chain in their node, " +
+                "therefore there is nothing it would be valid for them to merge with.");
     }
-    
+
     @Override
     public boolean baseIsTouching(Chain sibling, int direction) {
         return sibling.isTouching(-direction);
     }
-    
+
     public boolean updateTouching(Chain sibling, int direction) {
         if (baseIsTouching(sibling, direction)) {
             Chain.addTouching(this, sibling, direction);
@@ -51,12 +53,11 @@ public class FullChain extends Chain {
             return false;
         }
     }
-    
+
     /**
-     * Tests whether the subchains are actually touching, and updates the node and
-     * parent chain with the new chains this splits into, recursively splitting
-     * the parent as well if necessary.
-     *
+     * Tests whether the subchains are actually touching, and updates the node and parent chain with the new chains this splits into,
+     * recursively splitting the parent as well if necessary.
+     * <p>
      * Returns the top-level chains (i.e. most distant ancestor) resulting from this split.
      */
     @Override
@@ -70,17 +71,17 @@ public class FullChain extends Chain {
             return parent.checkConnectivity();
         }
     }
-    
+
     @Override
     public boolean isTouching(int side) {
         return true;
     }
-    
+
     @Override
     public boolean isTouchingAnySide() {
         return true;
     }
-    
+
     @Override
     public Set<Vector3i> getPositions(Vector3i pos) {
         Set<Vector3i> result = new HashSet<>();
@@ -93,11 +94,11 @@ public class FullChain extends Chain {
         }
         return result;
     }
-    
+
     public String toString() {
         return "FCmp " + node.size;
     }
-    
+
     @Override
     public void validate(Stack<Integer> location) {
         TreeUtils.assrt(active);
@@ -120,7 +121,7 @@ public class FullChain extends Chain {
             TreeUtils.assrt(node instanceof SolidNode);
         }
         for (Pair<Integer, Chain> t : touching()) {
-            TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction "+t.a+" size "+node.size+" location "+location);
+            TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction " + t.a + " size " + node.size + " location " + location);
             TreeUtils.assrt(t.b.isTouching(this, -t.a));
             TreeUtils.assrt(node.size == t.b.node.size);
             //TreeUtils.assrt(parent == t.b.parent || parent.isTouching(t.b.parent, t.a), "size = "+node.size+", direction = "+t.a);

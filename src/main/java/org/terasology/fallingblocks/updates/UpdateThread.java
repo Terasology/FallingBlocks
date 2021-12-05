@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-public class UpdateThread extends Thread{
+public class UpdateThread extends Thread {
     private final BlockingQueue<Update> in;
     private final BlockingQueue<Set<Vector3i>> out;
     private final Object updatingFinishedMonitor;
@@ -35,7 +35,7 @@ public class UpdateThread extends Thread{
         previousUpdatedTime = System.currentTimeMillis();
         try {
             while (!isInterrupted()) {
-                Update update = in.poll(100,TimeUnit.MILLISECONDS);
+                Update update = in.poll(100, TimeUnit.MILLISECONDS);
                 long startTime = System.currentTimeMillis();
                 if (update != null) {
                     updatedChains.addAll(update.execute(tree));
@@ -56,7 +56,9 @@ public class UpdateThread extends Thread{
                     }
                     updatedChains.clear();
                 }
-                synchronized (updatingFinishedMonitor) { // I can't find convenient monitors separate from locks, and Java requires that the lock be acquired before the monitor is usable.
+                // TODO: I can't find convenient monitors separate from locks,
+                //  and Java requires that the lock be acquired before the monitor is usable.
+                synchronized (updatingFinishedMonitor) {
                     updatingFinishedMonitor.notifyAll();
                 }
             }

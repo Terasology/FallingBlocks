@@ -13,9 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Tree {
-    public Node rootNode = null;
-    public Vector3i rootNodePos = null;
-
     // This actually needs to be the minimum of SIZE_X, SIZE_Y and SIZE_Z, but it's assumed later that SIZE_Y >= SIZE_X = SIZE_Z anyway.
     public static final int CHUNK_NODE_SIZE = Chunks.SIZE_X;
 
@@ -26,6 +23,9 @@ public class Tree {
 
     // All EmptyNodes with the same size and tree are identical, so the same object is used.
     public final Map<Integer, EmptyNode> emptyNodes = new HashMap<>();
+
+    public Node rootNode = null;
+    public Vector3i rootNodePos = null;
 
     // For all of the chains, the chains in sub-nodes that compose them, and the octants they're in
     IntPairSetHeap<Chain> subchains = new IntPairSetHeap<>(8);

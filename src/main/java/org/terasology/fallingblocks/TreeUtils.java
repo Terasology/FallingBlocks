@@ -16,6 +16,7 @@ import static org.terasology.fallingblocks.Tree.CHUNK_NODE_SIZE;
 
 public class TreeUtils {
     public static final int[] DIRECTIONS = new int[]{-4, -2, -1, 1, 2, 4};
+
     // Does the block count as solid for the purposes of connectivity?
     // I'm avoiding inlining this because I'm not sure if it'll have to be changed at some point.
     public static boolean isSolid(Block block) {
@@ -27,7 +28,7 @@ public class TreeUtils {
         for (int x = 0; x < CHUNK_NODE_SIZE; x++) {
             for (int y = 0; y < CHUNK_NODE_SIZE; y++) {
                 for (int z = 0; z < CHUNK_NODE_SIZE; z++) {
-                    data[(x * CHUNK_NODE_SIZE + y) * CHUNK_NODE_SIZE + z] = isSolid(world.getBlock(pos.x+x, pos.y+y, pos.z+z));
+                    data[(x * CHUNK_NODE_SIZE + y) * CHUNK_NODE_SIZE + z] = isSolid(world.getBlock(pos.x + x, pos.y + y, pos.z + z));
                 }
             }
         }
@@ -52,7 +53,7 @@ public class TreeUtils {
             for (int cx = 0; cx < 2; cx++) {
                 for (int cy = 0; cy < 2; cy++) {
                     for (int cz = 0; cz < 2; cz++) {
-                        children[i] = buildNode(tree, data, size/2, new Vector3i(cx,cy,cz).mul(size/2).add(pos));
+                        children[i] = buildNode(tree, data, size / 2, new Vector3i(cx, cy, cz).mul(size / 2).add(pos));
                         empty = empty && children[i] instanceof EmptyNode;
                         solid = solid && children[i] instanceof SolidNode;
                         i++;
@@ -79,8 +80,8 @@ public class TreeUtils {
     public static Node buildExpandedNode(Tree tree, Node old, Vector3i pos, int size) {
         if (old.size == size) {
             return old;
-        } else if (old.size < size/2) {
-            old = buildExpandedNode(tree, old, modVector(pos, size/2), size/2);
+        } else if (old.size < size / 2) {
+            old = buildExpandedNode(tree, old, modVector(pos, size / 2), size / 2);
         }
         Node[] children = new Node[8];
         int octant = octantOfPosition(pos, size);
@@ -88,7 +89,7 @@ public class TreeUtils {
             if (i == octant) {
                 children[i] = old;
             } else {
-                children[i] = new UnloadedNode(size/2, tree);
+                children[i] = new UnloadedNode(size / 2, tree);
             }
         }
         return new InternalNode(size, children, tree);
@@ -115,35 +116,42 @@ public class TreeUtils {
         if (direction == 0) {
             return isAdjacent(octant1, octant2);
         }
-        return (isOctantOnSide(octant1, direction) && isOctantOnSide(octant2, -direction) && octant1 - direction == octant2) ? direction : 0;
+        return (isOctantOnSide(octant1, direction) && isOctantOnSide(octant2, -direction)
+                && octant1 - direction == octant2) ? direction : 0;
     }
 
     /**
      * In a node with the given size, which octant would the given position be in?
      */
     public static int octantOfPosition(Vector3i pos, int size) {
-        return (pos.x >= size/2 ? 4 : 0) + (pos.y >= size/2 ? 2 : 0) + (pos.z >= size/2 ? 1 : 0);
+        return (pos.x >= size / 2 ? 4 : 0) + (pos.y >= size / 2 ? 2 : 0) + (pos.z >= size / 2 ? 1 : 0);
     }
 
     /**
-     * Does a cube of size `innerSize` at position `pos` inside a larger cube of size `size`
-     * touch side `side`?
+     * Does a cube of size `innerSize` at position `pos` inside a larger cube of size `size` touch side `side`?
      */
     public static boolean isPositionOnSide(Vector3i pos, int side, int innerSize, int size) {
-        switch(side) {
-            case -4 : return pos.x == 0;
-            case -2 : return pos.y == 0;
-            case -1 : return pos.z == 0;
-            case  1 : return pos.z == size - innerSize;
-            case  2 : return pos.y == size - innerSize;
-            case  4 : return pos.x == size - innerSize;
-            default : throw new IllegalArgumentException(side+" is not a valid side.");
+        switch (side) {
+            case -4:
+                return pos.x == 0;
+            case -2:
+                return pos.y == 0;
+            case -1:
+                return pos.z == 0;
+            case 1:
+                return pos.z == size - innerSize;
+            case 2:
+                return pos.y == size - innerSize;
+            case 4:
+                return pos.x == size - innerSize;
+            default:
+                throw new IllegalArgumentException(side + " is not a valid side.");
         }
     }
 
     public static boolean isPositionInternal(Vector3i pos, int size) {
         return (pos.x > 0) && (pos.y > 0) && (pos.z > 0)
-               && (pos.x < size - 1) && (pos.y < size - 1) && (pos.z < size - 1);
+                && (pos.x < size - 1) && (pos.y < size - 1) && (pos.z < size - 1);
     }
 
     public static Vector3i modVector(Vector3i v, int s) {
@@ -151,7 +159,9 @@ public class TreeUtils {
     }
 
     public static Vector3i octantVector(int octant, int size) {
-        return new Vector3i(isOctantOnSide(octant, 4) ? size : 0, isOctantOnSide(octant, 2) ? size : 0, isOctantOnSide(octant, 1) ? size : 0);
+        return new Vector3i(isOctantOnSide(octant, 4) ? size : 0,
+                isOctantOnSide(octant, 2) ? size : 0,
+                isOctantOnSide(octant, 1) ? size : 0);
     }
 
     public static void assrt(boolean valid) {

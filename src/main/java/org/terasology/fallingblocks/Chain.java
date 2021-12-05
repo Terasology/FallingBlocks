@@ -27,7 +27,7 @@ public class Chain {
     public final Tree tree;
     public boolean supported; //Does this chain contain any unloaded Chains (which are assumed to be supported)?
     boolean active = true; //Is this chain currently part of the overall octree structure?
-    
+
     public Chain(int childIndex, Chain childChain, InternalNode node) {
         this.tree = node.tree;
         subchainId = tree.subchains.allocate();
@@ -37,7 +37,7 @@ public class Chain {
         this.node = node;
         resetSupported();
     }
-    
+
     public Chain(Set<Pair<Integer, Chain>> subchains, Node node) {
         this.tree = node.tree;
         touchingId = tree.touching.allocate();
@@ -53,11 +53,10 @@ public class Chain {
         this.node = node;
         resetSupported();
     }
-    
+
     /**
-     * Adds those chains that it can be derived that ke'a touches this from
-     * the subchains. This may miss some, in the cases that this is touching
-     * a FullChain, which doesn't have subchains.
+     * Adds those chains that it can be derived that ke'a touches this from the subchains. This may miss some, in the cases that this is
+     * touching a FullChain, which doesn't have subchains.
      */
     void deriveTouchingFromSubchains() {
         for (Pair<Integer, Chain> subchain : subchains()) {
@@ -72,7 +71,7 @@ public class Chain {
             }
         }
     }
-    
+
     public void resetSupported() {
         for (Pair<Integer, Chain> sc : subchains()) {
             if (sc.b.supported) {
@@ -82,7 +81,7 @@ public class Chain {
         }
         supported = false;
     }
-    
+
     public void merge(Chain sibling) {
         TreeUtils.assrt(active);
         TreeUtils.assrt(sibling.isActive());
@@ -115,7 +114,7 @@ public class Chain {
         supported = supported || sibling.supported;
         sibling.inactivate(false);
     }
-    
+
     public void replaceWith(Chain replacement) {
         for (Pair<Integer, Chain> sc : subchains()) {
             replacement.addSubchain(sc.a, sc.b);
@@ -143,10 +142,9 @@ public class Chain {
         active = false;
         replacement.validate(new Stack<>());
     }
-    
+
     /**
-     * Work out whether this is touching the given chain without just
-     * getting the result from the cached set (this.touching).
+     * Work out whether this is touching the given chain without just getting the result from the cached set (this.touching).
      */
     public boolean baseIsTouching(Chain sibling, int direction) {
         if (sibling instanceof FullChain) {
@@ -165,7 +163,7 @@ public class Chain {
         }
         return false;
     }
-    
+
     public boolean isTouching(Chain sibling, int direction) {
         if (direction == 0) {
             return baseIsTouching(sibling, direction);
@@ -178,7 +176,7 @@ public class Chain {
             return false;
         }
     }
-    
+
     public boolean updateTouching(Chain sibling, int direction) {
         if (sibling instanceof FullChain) {
             return sibling.updateTouching(this, -direction);
@@ -199,12 +197,11 @@ public class Chain {
         }
         return result;
     }
-    
+
     /**
-     * Tests whether the subchains are actually touching, and updates the node and
-     * parent chain with the new chains this splits into, recursively splitting
-     * the parent as well if necessary.
-     *
+     * Tests whether the subchains are actually touching, and updates the node and parent chain with the new chains this splits into,
+     * recursively splitting the parent as well if necessary.
+     * <p>
      * Returns the top-level chains (i.e. most distant ancestor) resulting from this split.
      */
     public Set<Chain> checkConnectivity() {
@@ -273,8 +270,8 @@ public class Chain {
             return parent.checkConnectivity();
         }
     }
-            
-    
+
+
     public boolean isTouching(int side) {
         for (Pair<Integer, Chain> subchain : subchains()) {
             if (TreeUtils.isOctantOnSide(subchain.a, side) && subchain.b.isTouching(side)) {
@@ -283,30 +280,30 @@ public class Chain {
         }
         return false;
     }
-    
+
     public boolean isTouchingAnySide() {
         return isTouching(4)
-            || isTouching(2)
-            || isTouching(1)
-            || isTouching(-1)
-            || isTouching(-2)
-            || isTouching(-4);
+                || isTouching(2)
+                || isTouching(1)
+                || isTouching(-1)
+                || isTouching(-2)
+                || isTouching(-4);
     }
-    
+
     public Set<Vector3i> getPositions(Vector3i pos) {
         Set<Vector3i> result = new HashSet<>();
         int size = node.size;
         for (Pair<Integer, Chain> subchain : subchains()) {
             Vector3i subPosition = new Vector3i(pos);
             int octant = subchain.a;
-            subPosition.add(TreeUtils.isOctantOnSide(octant, 4) ? size/2 : 0,
-                            TreeUtils.isOctantOnSide(octant, 2) ? size/2 : 0,
-                            TreeUtils.isOctantOnSide(octant, 1) ? size/2 : 0);
+            subPosition.add(TreeUtils.isOctantOnSide(octant, 4) ? size / 2 : 0,
+                    TreeUtils.isOctantOnSide(octant, 2) ? size / 2 : 0,
+                    TreeUtils.isOctantOnSide(octant, 1) ? size / 2 : 0);
             result.addAll(subchain.b.getPositions(subPosition));
         }
         return result;
     }
-    
+
     public void inactivate(boolean removeAncestors) {
         node.getChains().remove(this);
         for (Pair<Integer, Chain> t : touching()) {
@@ -331,7 +328,7 @@ public class Chain {
         tree.subchains.remove(subchainId);
         tree.touching.remove(touchingId);
     }
-    
+
     public boolean isActive() {
         return active;
     }
@@ -404,8 +401,8 @@ public class Chain {
         if (a.isTouching(b, direction)) {
             return;
         }
-        a.tree.touching.set(a.touchingId, a.tree.touching.expand(a.touchingId, 1) - 1,  direction, b);
-        b.tree.touching.set(b.touchingId, b.tree.touching.expand(b.touchingId, 1) - 1,  -direction, a);
+        a.tree.touching.set(a.touchingId, a.tree.touching.expand(a.touchingId, 1) - 1, direction, b);
+        b.tree.touching.set(b.touchingId, b.tree.touching.expand(b.touchingId, 1) - 1, -direction, a);
     }
 
     public void removeTouching(Chain touching) {
@@ -419,17 +416,17 @@ public class Chain {
             }
         }
     }
-    
+
     public String toString() {
-        String result = "Cmp "+node.size+" [";
+        StringBuilder result = new StringBuilder("Cmp " + node.size + " [");
         boolean first = true;
         for (Pair<Integer, Chain> subchain : subchains()) {
             if (first) {
                 first = false;
             } else {
-                result += ", ";
+                result.append(", ");
             }
-            result += subchain.toString();
+            result.append(subchain.toString());
         }
         return result + "]";
     }
@@ -451,31 +448,31 @@ public class Chain {
         TreeUtils.assrt(numSubchains() > 0);
         for (Pair<Integer, Chain> subchain : subchains()) {
             TreeUtils.assrt(subchain.b.parent == this);
-            TreeUtils.assrt(subchain.b.isActive()); // In theory, this is covered by the next test (if it's in a node's chain list, it'll be validated), but it looks like it's failing.
+            TreeUtils.assrt(subchain.b.isActive()); // In theory, this is covered by the next test (if it's in a node's chain list, it'll
+            // be validated), but it looks like it's failing.
             TreeUtils.assrt(((InternalNode) node).children[subchain.a].getChains().contains(subchain.b));
         }
         boolean prevSupported = supported;
         resetSupported();
-        TreeUtils.assrt(prevSupported || !supported, "size "+node.size);
-        TreeUtils.assrt(!prevSupported || supported, "size "+node.size);
+        TreeUtils.assrt(prevSupported || !supported, "size " + node.size);
+        TreeUtils.assrt(!prevSupported || supported, "size " + node.size);
         // Checking that the subchains actually do all touch would be good, but also complicated.
         for (Pair<Integer, Chain> t : touching()) {
-            TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction "+t.a+" size "+node.size+" location "+location);
+            TreeUtils.assrt(baseIsTouching(t.b, t.a), "direction " + t.a + " size " + node.size + " location " + location);
             TreeUtils.assrt(t.b.isTouching(this, -t.a));
             TreeUtils.assrt(node.size == t.b.node.size);
             //TreeUtils.assrt(parent == t.b.parent || parent.isTouching(t.b.parent, t.a), "size = "+node.size+", direction = "+t.a);
         }
     }
-    
+
     /**
-     * Assert that, for two adjacent chains, all the appropriate subchains
-     * (and sub-sub-chains ect.) are touching.
+     * Assert that, for two adjacent chains, all the appropriate subchains (and sub-sub-chains ect.) are touching.
      */
     public static void validateTouching(Chain chain1, Chain chain2, int direction) {
         if (chain1.baseIsTouching(chain2, direction)) {
-            TreeUtils.assrt(chain1.isTouching(chain2, direction), "size = "+chain1.node.size+" direction = "+direction);
+            TreeUtils.assrt(chain1.isTouching(chain2, direction), "size = " + chain1.node.size + " direction = " + direction);
         }
-        
+
         for (Pair<Integer, Chain> sc1 : chain1.subchains()) {
             for (Pair<Integer, Chain> sc2 : chain2.subchains()) {
                 if (TreeUtils.isAdjacent(sc1.a, sc2.a, direction) != 0) {
