@@ -3,8 +3,9 @@
 
 package org.terasology.fallingblocks.arrays;
 
-import java.util.*;
 import org.terasology.fallingblocks.Pair;
+
+import java.util.Iterator;
 
 /**
  * A set of sets of int-object-pairs, where each of the (outer) sets has a fixed int label.
@@ -55,6 +56,7 @@ public class IntPairSetHeap<T> {
 
     /**
      * Increase the size of one of the sets by n.
+     *
      * @return The new size
      */
     public int expand(int key, int n) {
@@ -178,7 +180,8 @@ public class IntPairSetHeap<T> {
         }
 
         /**
-         * This isn't really the intended use-case of Iterable, but it's useful to be able to use these in for loops and it would be pointless to make a separate object just to be the iterator, so this is both. It can still only be iterated over once.
+         * This isn't really the intended use-case of Iterable, but it's useful to be able to use these in for loops and it would be
+         * pointless to make a separate object just to be the iterator, so this is both. It can still only be iterated over once.
          */
         @Override
         public Iterator<Pair<Integer, T>> iterator() {

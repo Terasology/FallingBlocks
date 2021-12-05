@@ -3,19 +3,26 @@
 
 package org.terasology.fallingblocks.arrays;
 
-import java.util.*;
 import org.terasology.fallingblocks.Pair;
 import org.terasology.fallingblocks.TreeUtils;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
 /**
- * Check the behaviour of IntPairSetHeap against a simpler reimplementation. The allocation of keys depends on extra bins, so it isn't checked.
+ * Check the behaviour of IntPairSetHeap against a simpler reimplementation. The allocation of keys depends on extra bins, so it isn't
+ * checked.
  */
 public class IntPairSetHeapTest<T> extends IntPairSetHeap<T> {
     private final IntPairSetHeap<T> internal;
     private final Map<Integer, ArrayList<Pair<Integer, T>>> records;
 
     public IntPairSetHeapTest(int binSize) {
-        super(binSize); //None of the usual datastructures in this instance are used. It only subclasses IntPairSetHeap to get the interface.
+        super(binSize); //None of the usual datastructures in this instance are used. It only subclasses IntPairSetHeap to get the
+        // interface.
         internal = new IntPairSetHeap<>(binSize);
         records = new HashMap<>();
     }

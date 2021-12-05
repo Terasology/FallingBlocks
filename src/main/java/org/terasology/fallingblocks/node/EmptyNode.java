@@ -14,7 +14,7 @@ import java.util.Set;
 /**
  * Nodes containing no solid blocks.
  */
-public class EmptyNode extends Node {
+public final class EmptyNode extends Node {
 
     private EmptyNode(int size, Tree tree) {
         this.size = size;

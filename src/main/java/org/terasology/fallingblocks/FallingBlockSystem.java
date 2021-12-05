@@ -63,6 +63,9 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
 
     private static final Logger logger = LoggerFactory.getLogger(FallingBlockSystem.class);
 
+    // TODO: Ideally this would be configurable, but I don't think there's currently a working way to do module configuration like this.
+    public boolean detachByMoving = true;
+
     @In
     private BlockManager blockManager;
     private Block air;
@@ -88,9 +91,6 @@ public class FallingBlockSystem extends BaseComponentSystem implements UpdateSub
 
     @In
     private CameraTargetSystem cameraTarget;
-
-    // TODO: Ideally this would be configurable, but I don't think there's currently a working way to do module configuration like this.
-    public boolean detachByMoving = true;
 
     @Override
     public void initialise() {

@@ -47,11 +47,12 @@ public class UpdateThread extends Thread {
                 if (startTime > previousUpdatedTime + 90 && in.isEmpty()) {
                     previousUpdatedTime = startTime;
                     for (Chain chain : updatedChains) {
-                        while (chain.parent != null) { // Just in case the root node has expanded since this chain was added to the set.
-                            chain = chain.parent;
+                        Chain currentChain = chain;
+                        while (currentChain.parent != null) { // Just in case the root node has expanded since this chain was added to the set.
+                            currentChain = currentChain.parent;
                         }
-                        if (chain.isActive() && !chain.supported && !chain.isTouchingAnySide()) {
-                            out.add(chain.getPositions(tree.rootNodePos));
+                        if (currentChain.isActive() && !currentChain.supported && !currentChain.isTouchingAnySide()) {
+                            out.add(currentChain.getPositions(tree.rootNodePos));
                         }
                     }
                     updatedChains.clear();

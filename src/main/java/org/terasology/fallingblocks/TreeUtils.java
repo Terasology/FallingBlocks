@@ -14,8 +14,11 @@ import org.terasology.fallingblocks.node.UnloadedNode;
 
 import static org.terasology.fallingblocks.Tree.CHUNK_NODE_SIZE;
 
-public class TreeUtils {
+public final class TreeUtils {
     public static final int[] DIRECTIONS = new int[]{-4, -2, -1, 1, 2, 4};
+
+    private TreeUtils() {
+    }
 
     // Does the block count as solid for the purposes of connectivity?
     // I'm avoiding inlining this because I'm not sure if it'll have to be changed at some point.
@@ -78,16 +81,17 @@ public class TreeUtils {
      * Produce a new node that is all unloaded except for one preexisting child node.
      */
     public static Node buildExpandedNode(Tree tree, Node old, Vector3i pos, int size) {
-        if (old.size == size) {
-            return old;
-        } else if (old.size < size / 2) {
-            old = buildExpandedNode(tree, old, modVector(pos, size / 2), size / 2);
+        Node oldCopy = old;
+        if (oldCopy.size == size) {
+            return oldCopy;
+        } else if (oldCopy.size < size / 2) {
+            oldCopy = buildExpandedNode(tree, oldCopy, modVector(pos, size / 2), size / 2);
         }
         Node[] children = new Node[8];
         int octant = octantOfPosition(pos, size);
         for (int i = 0; i < 8; i++) {
             if (i == octant) {
-                children[i] = old;
+                children[i] = oldCopy;
             } else {
                 children[i] = new UnloadedNode(size / 2, tree);
             }
